@@ -36,7 +36,7 @@ The idea here is to give enough background so that we can get into the likelihoo
 
 ### 3. Likelihood
 
-Hopefully this section can serve to crystallize the first two sections. Everything we do for the rest of the semester relies on an understanding of the likelihood.
+This section should crystallize the first two sections. Everything we do for the rest of the semester relies on an understanding of the likelihood.
 
 - Definition
 - Maximization (analytic, with pre-made functions, and via optimization)
