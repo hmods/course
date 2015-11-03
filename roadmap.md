@@ -11,11 +11,11 @@ By the end of this course, graduate students should be able to comfortably:
 
 ## Outline
 
-### 1. Probability theory
+### 1. Probability
 
-I think there is some good philosophical content here, and it serves as a basis for much of what is to come.
+This serves as a basis for much of what is to come.
 
-- What is probability? Frequentist vs. Bayesian definitions
+- What is probability? Frequentist and Bayesian definitions
 - joint probabilities
 - independence
 - conditioning
@@ -23,7 +23,7 @@ I think there is some good philosophical content here, and it serves as a basis 
 - factorization & likelihood (tied to independence)
 - Bayes' theorem
 
-### 2. Distribution beastiary: 1
+### 2. Distributions
 
 The idea here is to give enough background so that we can get into the likelihood and linear regression sections without overwhelming students with a litany of probability distributions.
 
@@ -32,7 +32,7 @@ The idea here is to give enough background so that we can get into the likelihoo
 - Binomial
 - Uniform
 - Cauchy
-- Half-cauchy
+- Poisson
 
 ### 3. Likelihood
 
