@@ -34,6 +34,8 @@ The idea here is to give enough background so that we can get into the likelihoo
 - Cauchy
 - Poisson
 
+**Maybe do some model round-robins here?**
+
 ### 3. Likelihood
 
 This section should crystallize the first two sections. Everything we do for the rest of the semester relies on an understanding of the likelihood.
