@@ -185,7 +185,6 @@ The main dish. I'd like to avoid a recipe-based approach where we discuss varyin
 - basic Bayesian models in MCMCglmm
 - random effects, fixed effects, mixed effects models as special instances of hierarchical linear models
 
-
 #### Reading
 
 Gelman, A., J. Hill, and M. Yajima. 2012. Why We (Usually) Don’t Have to Worry About Multiple Comparisons. Journal of Research on Educational Effectiveness 5:189–211.  
