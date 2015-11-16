@@ -119,7 +119,7 @@ Here is my preference for teaching Poisson models first. I (personally) prefer t
 - simulation of data & parameter recovery
 
 
-### 4. Binomial models
+### 5. Binomial models
 
 Here, the students will continue to use a combination of methods for implementation. Key points to take away from this section include the properties/behavior of bionomial models, ways to check binomial modles, and a hint that Bayesian approaches are going to be more flexible.  The binomial-Poisson hierarchical model is a classic that should reinforce the notion that Bayesian approaches will generally be easier for more complex examples.
 
@@ -142,7 +142,7 @@ Here, the students will continue to use a combination of methods for implementat
 
 
 
-### 5. Intro to hierarchical models (Part I - Partial pooling and likelihood)
+### 6. Intro to hierarchical models (Part I - Partial pooling and likelihood)
 
 The main dish. I'd like to avoid a recipe-based approach where we discuss varying intercept and varying slope models as primary objectives. Instead, I think it's important to cover these topics as special cases of the general approach of hierarchical modeling as a means to impose probabilistic structures on parameters. From that perspective, students should be able to better extend these methods for their own work.
 
@@ -162,7 +162,7 @@ The main dish. I'd like to avoid a recipe-based approach where we discuss varyin
 - plotting estimates for different levels from lme4 models
 
 
-### 6. Intro to hierarchical models (Part II - Bayesian)
+### 7. Intro to hierarchical models (Part II - Bayesian)
 
 #### Priorities
 
@@ -190,7 +190,7 @@ The main dish. I'd like to avoid a recipe-based approach where we discuss varyin
 Gelman, A., J. Hill, and M. Yajima. 2012. Why We (Usually) Don’t Have to Worry About Multiple Comparisons. Journal of Research on Educational Effectiveness 5:189–211.  
 Gelman and Hill discussion of random effects terminology (very good)
 
-### 7. Hierarchical model construction
+### 8. Hierarchical model construction
 
 This is where I think we will have the greatest impact on students future work. Translating problems to models is a key skill, and it may take a fair bit of practice. Tools to implement include graphical skills (e.g. drawing DAGs), and familiarity with probability distributions.
 
@@ -202,10 +202,9 @@ This is where I think we will have the greatest impact on students future work. 
 - more practice in developing models (don't necessarily have to implement)
 
 
-### 8. Comparing between models 
+### 9. Comparing between models 
 
 I envisions this as occuring a bit more ad hoc during the second half as students start to build their own models
-
 
 - start with simpler models and build (may be counterintuitive for those used to step-down procedures)
 - posterior prediction
@@ -217,9 +216,7 @@ I envisions this as occuring a bit more ad hoc during the second half as student
 
 Hooten, M. B., and N. T. Hobbs. 2015. A guide to Bayesian model selection for ecologists. Ecological Monographs 85:3–28.  
 
-
-
-### 9. Student projects
+### 10. Student projects
 
 This will help to make the class more valuable for the students, who doubtless have a ton of their own work to do on top of coursework.
 
