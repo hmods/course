@@ -186,9 +186,15 @@ The main dish. I'd like to avoid a recipe-based approach where we discuss varyin
 - random effects, fixed effects, mixed effects models as special instances of hierarchical linear models
 
 
+<<<<<<< HEAD
 
 #### Reading
 
+=======
+
+#### Reading
+
+>>>>>>> 412dfef9269474c8719b637cd59880bc6b0d0c9c
 Gelman, A., J. Hill, and M. Yajima. 2012. Why We (Usually) Don’t Have to Worry About Multiple Comparisons. Journal of Research on Educational Effectiveness 5:189–211.  
 Gelman and Hill discussion of random effects terminology (very good)
 
@@ -203,9 +209,11 @@ This is where I think we will have the greatest impact on students future work. 
 - example: error in variables models
 - more practice in developing models (don't necessarily have to implement)
 
+
 ### 8. Comparing between models 
 
 I envisions this as occuring a bit more ad hoc during the second half as students start to build their own models
+
 
 - start with simpler models and build (may be counterintuitive for those used to step-down procedures)
 - posterior prediction
