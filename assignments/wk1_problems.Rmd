@@ -1,0 +1,144 @@
+---
+title: 'Week 1 assignment: linear models'
+author: "Your name here"
+date: "January 6, 2015"
+output: pdf_document
+---
+
+# Loading the relevant R packages
+
+To complete these problems, you'll need some R packages loaded and ready to go.
+We suggest starting with a package for plotting (ggplot2), and potentially some packages for manipulating data frames (dplyr and tidyr), depending on how you prefer to use R.
+
+```{r}
+#your code here
+```
+
+# Problem 1
+
+You've discovered a single adult of a new species of amniote.
+Though you don't know the sex, you're worried that it might lay eggs soon and you want to build something to protect them.
+To do so, you need to predict the mass of this new creature's eggs.
+You first weigh your amniote and find that it weighs 3000 grams.
+Luckily, some researchers have just recently published a full database of aminote life history traits, which can give you some information about how amniote adult mass relates to amniote egg mass. ([Myhrvold et al. (2015)](http://www.esajournals.org/doi/abs/10.1890/15-0846R.1))
+
+### Loading the data
+
+Your first task will be to acquire the published dataset, which is available [here](http://www.esapubs.org/archive/ecol/E096/269/Data_Files/Amniote_Database_Aug_2015.csv).
+Download the data file `Amniote_Database_Aug_2015.csv` and save it in a location that makes sense (e.g., `~/hmods/class1/data/`).
+Then, you'll need to load the data with the `read.csv()` function.
+Do not use `file.choose()`.
+
+```{r}
+# your code here
+```
+
+### Preparing the data
+
+In this dataset, missing values are coded as `-999`.
+We want to replace these values with `NA` which indicates missing values to R.
+
+```{r}
+# your code here
+```
+
+### Visualizing the data
+
+We want to predict egg mass from adult body mass.
+Visualize the relationship between these two variables below.
+Transformation will be helpful for both variables.
+
+```{r}
+# your code here
+
+```
+
+### Modeling the data
+
+Use the `lm()` function to construct a linear model that could be used to predict egg mass based on adult body mass.
+(Hint: what other kinds of data transformations might be helpful prior to fitting the model?)
+
+```{r}
+# your code here
+
+```
+
+Evaluate the homoscedasticity and normality assumptions graphically (e.g., `plot(mymodel)`.
+
+```{r}
+# your code here
+
+```
+
+Are the assumptions met?
+Why or why not?
+
+*Your text answer here*
+
+### Understanding the model
+
+Produce a scatterplot as before, but this time add a trendline that represents the expected value of the response as a function of the predictor.
+
+```{r}
+# your code here
+```
+
+Make an image plot of the design matrix for your model (e.g., `image(t(model.matrix(m)))`):
+
+```{r}
+# your code here
+```
+
+Why does this image plot look the way it does, and what is the result of multiplying the design matrix by the vector of estimated coefficients (e.g., `model.matrix(m) %*% coef(m)`)?
+
+*Your text answer here*
+
+### Predicting egg mass for the new critter
+
+Predict the egg mass for the new species in units of grams.
+
+```{r}
+# your code here
+```
+Besides reporting your best estimate,and provide upper and lower bounds on this estimate, in units of grams.
+Remember that interval should incorporate both *predictive* uncertainty (error term in the model) and inferential uncertainty (uncertainty about the coefficients and amount of residiual error)
+(Hint: there's a built-in R function that should help generate prediction intervals)
+
+```{r}
+# your code here
+```
+
+# Problem 2
+
+A week later, you are told that the critter has been identified to be in the class Reptilia.
+Use this new information to update your prediction in the code block below, commenting your code to document your thought process.
+
+```{r}
+# your code here
+```
+
+How does your new prediction compare to your prediction from Problem 1 in terms of accuracy and precision?
+Is it lower or higher, and why?
+
+*Your text answer here*
+
+# Problem 3
+
+Myrdahl et al. just retracted all of the adult mass data from their data set, and have advised researchers to stop using the existing adult mass data until further notice!
+Given this new development, and ignoring your previous (now spurious) analysis, what's your best prediction for the critter's egg mass?
+Update your prediction in the block below, commenting the code as necessary.
+
+```{r}
+# your code here
+```
+# Bonus Problem (optional)
+
+When predicting the egg mass value for your unknown amniote, you probably used a built-in function in R (i.e. *predict*) to automatically generate prediction intervals.
+Can you generate prediction intervals from the model without resorting to a built-in *predict* fuction?
+(Hint 1: how many parameters were estimated?)
+(Hint 2: can prediction intervals be simulated?)
+(Hint 3: check out chapter 7 of Gelman and Hill if you have it)
+
+```{r}
+# your code here
+```
