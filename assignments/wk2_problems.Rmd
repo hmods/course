@@ -1,0 +1,90 @@
+---
+title: 'Week 2 assignment: likelihood'
+author: "Your name here"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+---
+
+# Problem 1
+
+Earthquakes are most forceful at their epicenters, and this force attenuates with distance. 
+R has an earthquake dataset `attenu` with measurements of peak horizontal ground acceleration by distance measured at multiple recording stations, with each earthquake coded in terms of magnitude. 
+See the help file for more information on this dataset by typing `?attenu`.
+
+Your main task this week is to build one model that predicts both ground acceleration at the epicenter (distance = 0), and the acceleration by distance curve as a function of magnitude and distance from the epicenter. 
+You will obtain maximum likelihood estimates for the parameters of the model using the `optim` function. 
+The structure of your model is up to you. 
+You can use a combination of intuition, imagination, first principles, research, and collaboration to construct your model. 
+(Note: there are many possible models that one could construct!)
+
+You will benefit from visualizing the data, specifically the relationships between the quantities of interest i.e., magnitude (`mag`), distance from epicenter (`dist`), and peak acceleration (`accel`).
+Include your visualization code and plots below.
+
+```{r}
+# your code here
+```
+
+What is the equation for your model? 
+Write it in \LaTeX, bounded between dollar signs (e.g., $e = mc^2$), not in normal text. 
+
+$Your equation here$
+
+Define all of the parameters, and explain why you formulated it in this way. 
+What assumptions went into your model's construction? 
+
+*Your text here*
+
+Write a function called `nll` that returns the negative log likelihood for your model. 
+The arguments to this function should be `theta` (the parameters), and `data` (the data).
+
+```{r}
+# Your code here
+```
+
+Use `optim` to obtain maximum likelihood estimates for your model parameters.
+
+```{r}
+# Your code here
+```
+
+Did `optim()` converge to a minimum? How do you know? 
+
+*Your text here.*
+
+Create a scatterplot with fitted values vs. residuals.
+
+```{r}
+# Your code here
+```
+
+What stands out in the plot of fitted values vs. residuals? 
+Are you worried about any violations of assumptions? 
+Why or why not? 
+
+*Your text here.*
+
+Plot the distance by acceleration data along with your predicted curves (starting at a distance of 0) for earthquakes of magnitude 5 and 8. 
+
+```{r}
+# Your code here
+```
+
+How do your predictions compare to the data? 
+Which characteristics of the data are captured well, and which are captured poorly by your model?
+
+*Your text here.*
+
+# Problem 2
+
+Pat loves to play basketball. 
+You observe Pat practicing free throws at the recreation center one day. 
+Pat misses 3 shots in a row. 
+Generate a likelihood profile for $p$, the probability that Pat makes a free throw.
+
+```{r}
+# Your code here
+```
+
+What is your MLE for $p$, and does it make sense? Why or why not?
+
+*Your text here*
