@@ -1,0 +1,127 @@
+---
+title: 'Week 3 assignment: Bayesian inference'
+author: "Your name here"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+---
+
+# Problem 1
+
+Maure et al. (2015) conducted experiments to see how ladybird beetle diet affected interactions with parasitoid wasps.
+Individual beetles were randomly assigned to one of five diet treatments:
+
+1. 20 aphids per day
+2. 2 aphids per day
+3. 20 aphids per day + pollen
+4. 2 aphids per day + pollen
+5. pollen only
+
+Each beetle was exposed to a female parisitoid wasp for 3 hours, which deposited eggs in the beetle, and the beetles were then fed each day and the outcome of the interaction monitored.
+The authors wanted to know whether diet affected the ability to recover (i.e. not die) after the parasitoid attack.
+Your task is to build a Bayesian model with Stan for beetle survival as a function of experimental treatment, estimating the probability of survival for each treatment.
+To keep things simple, consider the treatments to be categorical and unordered.
+The data are archived in Dryad [here](http://www.datadryad.org/resource/doi:10.5061/dryad.7fq4j).
+
+**Important**: do not manipulate the original raw data file!
+This is is error prone, leaves no written record, encourages spreadsheet farming, and is not reproducible.
+And, in this case, the data are already well organized.
+Read in the .xls file using the `readxl` package, then use R to massage the data as necessary.
+
+```{r}
+## Loading the raw data
+library(readxl) # use the read_excel() function to load the data
+# your code here
+
+## Cleaning the data
+# your code here
+
+## Visualizing the data
+# your code here
+```
+
+Write out your model using \LaTeX:
+
+*Your \LaTeX${}$ here*
+
+Paste your Stan model statement in the code block below, and ensure that your written model matches the notation in your Stan file:
+
+```
+Your Stan file here
+```
+
+Now, use `rstan` to fit your model.
+Evaluate convergence by inspecting the $\hat{R}$ statistic and the traceplots.
+
+```{r}
+# your code here
+```
+
+Calculate posterior credible intervals, medians, means, and modes for the survival probabilities for each treatment.
+Hint: posterior draws can be extracted with the `rstan::extract` function, which returns a list of arrays.
+
+```{r}
+# your code here
+```
+
+Generate a plot that shows all of the raw data along with the posterior probability distributions of recovery for each treatment:
+
+```{r}
+# your code here
+```
+
+The authors reported statistically significant differences in ladybird beetle recovery between the diet treatments.
+What is your conclusion for the effect of diet on ladybird beetle recovery?
+
+*Your text here*
+
+# Problem 2
+
+One of the biggest advantages of Bayesian approaches is the ease with which you can make inference on **derived parameters**.
+For example, we might want to know which diet treatment gives the highest survival probability.
+In one draw from the posterior distribution, we should have five estimated probabilities.
+The highest probability can be recorded and stored in an object (say `best`).
+We can do this for each posterior draw to produce a vector of the "best" treatments (from the beetle's perspective).
+To find the posterior probability that each particular treatment is best, count the frequency of each treatment in the `best` vector, and divide by the total number of posterior draws.
+Do this below using the results from problem 1, and report the posterior probabilities.
+
+```{r}
+# your code here
+```
+
+Which treatment was best? What is the probability of that treatment being the best, conditional on the data?
+
+*Your text here*
+
+# Problem 3
+
+Simulate data from a normal distribution for three groups, each with a different mean.
+You can assume that the standard deviations for each group are equal.
+In generating data, use a design matrix to acquire the expected value for your data (somewhere in your code there should be `X %*% beta`).
+
+```{r}
+# your code here
+```
+
+Write a Stan model statement for a linear model that you can use to estimate the parameters.
+
+```
+Your Stan model here
+```
+
+Use Stan to estimate the parameters of your model.
+
+```{r}
+# your code here
+```
+
+Assess convergence of the MCMC algorithm graphically and with the Rhat statistic.
+
+```{r}
+# your code here
+```
+
+Plot the marginal posterior distributions for each parameter with a vertical line at the true value.
+
+```{r}
+# your code here
+```
