@@ -1,0 +1,276 @@
+---
+title: 'Week 3 assignment: Bayesian inference'
+author: "Example solutions"
+date: "January 17, 2015"
+output: pdf_document
+---
+
+# Problem 1
+
+Maure et al. (2015) conducted experiments to see how ladybird beetle diet affected interactions with parasitoid wasps.
+Individual beetles were randomly assigned to one of five diet treatments:
+
+1. 20 aphids per day
+2. 2 aphids per day
+3. 20 aphids per day + pollen
+4. 2 aphids per day + pollen
+5. pollen only
+
+Each beetle was exposed to a female parisitoid wasp for 3 hours, which deposited eggs in the beetle, and the beetles were then fed each day and the outcome of the interaction monitored.
+The authors wanted to know whether diet affected the probability of recovering from parasitoid attack.
+Your task is to build a Bayesian model with Stan for beetle survival as a function of experimental treatment, estimating the probability of survival for each treatment.
+To keep things simple, consider the treatments to be categorical and unordered.
+The data are archived in Dryad [here](http://www.datadryad.org/resource/doi:10.5061/dryad.7fq4j).
+
+**Important: do not manipulate the original raw data file!**
+This is is error prone, leaves no written record, encourages spreadsheet farming, and is not reproducible.
+And, in this case, the data are already well organized.
+Read in the .xls file using the `readxl` package, then use R to clean the data as necessary.
+
+```{r, message = FALSE}
+## Loading the raw data
+library(readxl) # use the read_excel() function to load the data
+library(dplyr)
+library(ggplot2)
+d <- read_excel('data/diet_data.xlsx')
+
+## Cleaning the data
+# remove NA columns
+d <- d[, !is.na(names(d))]
+
+# replace spaces in column names with underscores and convert to lowercase
+names(d) <- gsub(' ', '_', names(d)) %>%
+  tolower()
+
+# create binary recovery variable
+d <- d %>%
+  mutate(recov = ifelse(ladybird_recovery == 'YES', 1, 0))
+
+# calculate the proportion recovered for each diet
+p_sample <- d %>%
+  group_by(diet) %>%
+  summarize(p_recov = mean(recov))
+
+## Visualizing the data
+ggplot(d, aes(x=diet, y=recov)) +
+  geom_jitter(position = position_jitter(width=.2, height=.1)) +
+  geom_point(aes(y = p_recov), data = p_sample, col='red', size=3)
+```
+
+Write out your model using \LaTeX:
+
+$y_i \sim Bern(p_j[i])$
+
+$p_j \sim Beta(1, 1)$
+
+Paste your Stan model statement in the code block below, and ensure that your written model matches the notation in your Stan file:
+
+```
+data {
+  // define the types and names of the data
+  int n; // n is an integer
+  int<lower=0, upper=1> y[n]; // y is an integer vector with n elements
+  int n_trt;
+  int<lower=1, upper=n_trt> treatment[n];
+}
+parameters {
+  vector<lower=0, upper=1>[n_trt] p; // p is a real number between 0 and 1
+}
+model {
+  // define priors
+  p ~ beta(1, 1);
+
+  // likelihood
+  for (i in 1:n)
+    y[i] ~ bernoulli(p[treatment[i]]);
+}
+```
+
+Now, use `rstan` to fit your model.
+Evaluate convergence by inspecting the $\hat{R}$ statistic and the traceplots.
+
+```{r, results = 'hide', message = FALSE}
+library(rstan)
+
+# bundle data into a list
+stan_d <- list(n = nrow(d),
+               y = d$recov,
+               n_trt = length(unique(d$diet)),
+               treatment = as.numeric(factor(d$diet)))
+
+# fit the model
+m_fit <- stan('bern_mod.stan', data = stan_d)
+```
+
+```{r}
+# print summary
+m_fit
+
+# plot the chains
+traceplot(m_fit, inc_warmup=TRUE, alpha=.5) + ylim(0, 1)
+```
+
+Calculate posterior credible intervals, medians, means, and modes for the survival probabilities for each treatment.
+Hint: posterior draws can be extracted with the `rstan::extract` function, which returns a list of arrays.
+
+```{r, message = FALSE}
+library(reshape2)
+library(modeest)
+
+# extract the posterior draws
+post <- rstan::extract(m_fit)
+
+# make a data frame that contains all of the posterior draws
+post_df <- post$p %>%
+  melt(varnames = c('iter', 'trt'))
+
+# match numeric treatment indicators to diet names
+post_df$diet <- levels(factor(d$diet))[post_df$trt]
+
+# summarize each treatment's posterior in terms of quantiles and central tendency
+post_sum <- post_df %>%
+  group_by(diet) %>%
+  summarize(lo = quantile(value, .025),
+            hi = quantile(value, .975),
+            mode = mlv(value, method='mfv')$M,
+            median = median(value),
+            mean = mean(value))
+
+# plot the data frame
+post_sum
+```
+
+Generate a plot that shows all of the raw data along with the posterior probability distributions of recovery for each treatment:
+
+```{r}
+# plot the raw data with interval estimates
+ggplot(d, aes(x=diet, y=recov)) +
+  geom_jitter(position = position_jitter(width=.2, height=.1)) +
+  geom_point(aes(y = p_recov), data = p_sample, col='red', size=3) +
+  geom_segment(aes(xend = diet, y = lo, yend = hi), data = post_sum) +
+  geom_point(aes(y=mode), data = post_sum, color='blue')
+
+
+ggplot(d, aes(x=recov)) +
+  geom_histogram() +
+  geom_density(aes(x=value), data = post_df) +
+  facet_wrap(~ diet)
+```
+
+The authors reported statistically significant differences in ladybird beetle recovery between the diet treatments.
+What is your conclusion for the effect of diet on ladybird beetle recovery?
+
+*It doesn't seem like the recovery probabilities were very different between the five treatments. Beetles without aphids had the lowest probabilities of recovery, but there is considerable overlap with the other diets. See the posterior comparisons below.*
+
+```{r}
+ggplot(post_df, aes(x=value, fill=diet)) +
+  geom_density(alpha=.4) +
+  xlab('Posterior density') +
+  ylab('Probability of recovery')
+```
+
+
+# Problem 2
+
+One of the biggest advantages of Bayesian approaches is the ease with which you can make inference on **derived parameters**.
+For example, we might want to know which diet treatment gives the highest survival probability.
+In one draw from the posterior distribution, we should have five estimated probabilities.
+The highest probability can be recorded and stored in an object (say `best`).
+We can do this for each posterior draw to produce a vector of the "best" treatments (from the beetle's perspective).
+To find the posterior probability that each particular treatment is best, count the frequency of each treatment in the `best` vector, and divide by the total number of posterior draws.
+Do this below using the results from problem 1, and report the posterior probabilities.
+
+```{r}
+best <- apply(post$p, 1, which.max)
+p_best <- rep(NA, stan_d$n_trt)
+for (i in 1:stan_d$n_trt){
+  p_best[i] <- mean(best == i)
+}
+data.frame(diet = levels(factor(d$diet)), p_best)
+```
+
+Which treatment was best? What is the probability of that treatment being the best, conditional on the data?
+
+*The 2 aphids + pollen treatment was the best with probability $\approx$ 0.4.*
+
+
+# Problem 3
+
+Simulate data from a normal distribution for three groups, each with a different mean.
+You can assume that the standard deviations for each group are equal.
+In generating data, use a design matrix to acquire the expected value for your data (somewhere in your code there should be `X %*% beta`).
+
+```{r}
+# your code here
+n <- 50
+ngroup <- 3
+group_vector <- sample(ngroup, n, replace = TRUE) %>%
+  sort()
+
+is_in_group <- function(x, group) {
+  # tests whether elements in x are in a group
+  return(as.numeric(x == group))
+}
+
+# make design matrix
+X <- matrix(nrow = n, ncol = ngroup)
+for (i in 1:ngroup){
+  X[, i] <- is_in_group(group_vector, i)
+}
+X
+
+# choose group means and residual sd
+beta <- c(-2.3, .1, 1.5)
+sigma <- .5
+
+# simulate data
+y <- rnorm(n, X %*% beta, sigma)
+```
+
+Write a Stan model statement for a linear model that you can use to estimate the parameters.
+
+```
+data {
+  int n; //
+  int p; //
+  matrix[n, p] X;
+  vector[n] y;
+}
+parameters {
+  vector[p] beta;
+  real<lower=0> sigma;
+}
+model {
+  beta ~ normal(0, 5);
+  sigma ~ normal(0, 5);
+  y ~ normal(X * beta, sigma);
+}
+```
+
+Use Stan to estimate the parameters of your model.
+
+```{r}
+library(rstan)
+stan_d <- list(X = X, p = ngroup, n = n, y = y)
+m_fit <- stan('lm.stan', data = stan_d)
+```
+
+Assess convergence of the MCMC algorithm graphically and with the Rhat statistic.
+
+```{r}
+m_fit
+traceplot(m_fit)
+```
+
+Plot the marginal posterior distributions for each parameter with a vertical line at the true value.
+
+```{r}
+post <- rstan::extract(m_fit)
+par(mfrow=c(2, 2))
+for (i in 1:ngroup){
+  plot(density(post$beta[, i]), main = paste('Group', i, 'mean', sep = ' '))
+  abline(v = beta[i])
+}
+plot(density(post$sigma), main = 'sigma')
+abline(v = sigma)
+```

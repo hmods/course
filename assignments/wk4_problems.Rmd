@@ -1,0 +1,57 @@
+---
+title: 'Week 4 assignment: Poisson models'
+author: "Your name here"
+date: "February 5, 2015"
+output: pdf_document
+---
+
+Wasps in the family Cynipidae lay their eggs on plants which form galls around the developing larvae, providing nutrition until the larvae metamorphose and burrow out of the galls, emerging as adults.
+From any particular gall, there is variation in the number of host wasps that emerge.
+
+Here, you will construct a Bayesian model for the number of emerging cynipid wasps, using features of the galls as explanatory variables.
+The data are available in the `cleaned_galls.csv` file.
+Your task is to estimate the parameters of your model, and then to do a posterior predictive check to evaluate overdispersion.
+
+# Problem 1: looking at the data
+
+Load the data and explore how the features relate to the response variable.
+
+```{r}
+# your code here
+```
+
+# Problem 2: model specification
+
+What is your model? Write it in \LaTeX.
+
+*Your equation here*
+
+What is your Stan model statement?
+
+```
+your Stan code here
+```
+
+# Problem 3: parameter estimation
+
+Use the `rstan` package to estimate your model parameters.
+
+```{r}
+# your code here
+```
+
+Verify convergence using traceplots and the Rhat statistic:
+
+```{r}
+# your code here
+```
+
+# Problem 4: posterior predictive check
+
+Does your model adequately capture the variance in the emergence data, or is there overdispersion?
+
+```{r}
+# your code here
+```
+
+*Your text answer here*
