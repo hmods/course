@@ -1,6 +1,6 @@
 ---
 title: 'Week 3 assignment: Bayesian inference'
-author: "Your name here"
+author: "Example solutions"
 date: "December 20, 2015"
 output: pdf_document
 ---
@@ -38,13 +38,10 @@ options(mc.cores = parallel::detectCores())
 
 # load the dataset
 options(warn = -1)
-dat <- read_excel("/home/will/temporary/Diet data_Dryad.xlsx")
+dat <- read_excel("data/diet_data.xlsx")
 options(warn = 0)
 
 ## Cleaning the data
-names(dat)
-  # that formatting is going to be difficult to use!
-
 # manually replace spaces with underscores and capitalize column names
 names(dat)[names(dat) == "Ladybird emergence date"] <- "ladybird_emergence_date"
 names(dat)[names(dat) == "Parasitoid oviposition date"] <- "parasitoid_oviposition_date"
@@ -55,7 +52,6 @@ names(dat) <- gsub(pattern = " ", replacement = "_", x = names(dat))
 
 # change capitals to lowercase
 names(dat) <- tolower(names(dat))
-names(dat)
   # much better
 
 # also, that pound sign means something else in R
