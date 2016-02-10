@@ -1,0 +1,76 @@
+---
+title: "Linear models"
+output:
+  beamer_presentation:
+    colortheme: "spruce"
+    fonttheme: "structurebold"
+---
+
+## Introductions
+
+- Who you are
+- What you would like to learn about
+
+## Course background
+
+* Motivation
+* Philosophy 
+
+## What might you learn?
+
+* R 
+* stats
+* math
+
+## What is a linear model?
+
+$$y \sim N(X \beta, \sigma)$$
+
+or
+
+$$y = X \beta + \epsilon$$
+$$\epsilon \sim N(0, \sigma)$$
+
+## Matrix multiplication review
+
+$X = \left[ \begin{array}{cc}
+1 & 0 \\
+1 & 1.1 \\
+1 & 2.5 \end{array} \right]$, 
+$\beta = \begin{bmatrix}
+-3 \\ 
+1 \end{bmatrix}$, what is $X \beta$?
+
+## Linear models
+
+$y = X \beta + \epsilon$
+
+$\begin{bmatrix}
+y_1 \\
+y_2 \\
+y_3 \end{bmatrix} = 
+\begin{bmatrix}
+-3 \\
+-1.9 \\
+-0.5 \end{bmatrix} + 
+\begin{bmatrix}
+\epsilon_1 \\
+\epsilon_2 \\
+\epsilon_3 \end{bmatrix}$
+
+$X \beta$ is the **linear predictor**, $\epsilon$ is normal error 
+
+## Examples of linear models
+
+- model of the mean
+- linear regression
+- multiple regression
+- ANOVA
+- ANCOVA
+- factorial ANOVA
+- general linear models
+
+## Case study: amniote life history trait prediction
+
+- R markdown overview
+- how to turn in assignments (vote)

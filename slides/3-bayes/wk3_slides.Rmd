@@ -1,0 +1,361 @@
+---
+title: "Week 3: Bayesian inference"
+fontsize: 7pt
+output:
+  beamer_presentation:
+    colortheme: "spruce"
+    fonttheme: "structurebold"
+    latex_engine: xelatex
+header-includes: 
+- \usepackage{listings}
+- \lstset{basicstyle=\small}
+- \setmonofont[Scale=MatchLowercase]{Courier}
+- \setmonofont[Scale=0.6]{Courier}
+---
+
+
+```{r, echo=FALSE, message=FALSE}
+library(ggplot2)
+library(rstan)
+rstan_options(auto_write = TRUE)
+par(bty='n')
+```
+
+## Bayes' theorem
+
+$$p(\theta \mid y) = \dfrac{p(y \mid \theta) p(\theta)}{p(y)}$$
+
+$$p(\theta \mid y) \propto p(y \mid \theta) p(\theta)$$
+
+## Freethrow example
+
+0 shots made, 3 attempts
+
+```{r, echo=FALSE}
+p <- seq(0, 1, .01)
+lik <- dbinom(0, 3, p)
+plot(p, lik, type = 'l', xlab = 'Pr(make freethrow)', ylab = '')
+legend('topright', lty=1, col=1, legend = 'Likelihood', bty='n')
+```
+
+
+## What is the MLE?
+
+```{r, echo=FALSE, fig.width=5, fig.height=4}
+plot(p, lik, type = 'l', xlab = 'Pr(make freethrow)', ylab = '')
+legend('topright', lty=1, col=1, legend = 'Likelihood', bty='n')
+```
+
+
+
+## What is our prior?
+
+```{r, echo=FALSE, fig.width=5, fig.height=4}
+plot(p, lik, type = 'l', xlab = 'Pr(make freethrow)', ylab = '')
+legend('topright', lty=1, col=1, legend = 'Likelihood', bty='n')
+```
+
+
+## Uniform prior (never heard of a "free throw")
+
+```{r, echo=FALSE, fig.width=5, fig.height=4}
+plot(p, lik, type = 'l', xlab = 'Pr(make freethrow)', ylab = '')
+x <- seq(0, 1, .01)
+lines(x, dbeta(x, 1, 1), col='red')
+legend('bottomleft', lty=1, col=1:2, legend = c('Likelihood', 'Prior'), 
+       bty='n')
+```
+
+
+## The posterior: uniform prior
+
+$$y \sim Binomial(k = 3, p)$$
+
+$$p \sim Beta(1, 1)$$
+
+```{r, echo=FALSE, fig.width=7, fig.height=4}
+plot(p, lik, type = 'l', xlab = 'Pr(make freethrow)', ylab = '', ylim = c(0, 4))
+x <- seq(0, 1, .01)
+lines(x, dbeta(x, 1, 1), col='red')
+lines(x, dbeta(x, 1, 4), col='green')
+legend('topright', lty=1, col=1:3, legend = c('Likelihood', 'Prior', 'Posterior'), 
+       bty='n')
+```
+
+
+## Non-uniform prior
+
+$$y \sim Binomial(k = 3, p)$$
+
+$$p \sim Beta(2, 2)$$
+
+```{r, echo=FALSE, fig.width=7, fig.height=4}
+plot(p, lik, type = 'l', xlab = 'Pr(make freethrow)', ylab = '', ylim = c(0, 3))
+x <- seq(0, 1, .01)
+lines(x, dbeta(x, 2, 2), col='red')
+lines(x, dbeta(x, 2, 5), col='green')
+legend('topright', lty=1, col=1:3, legend = c('Likelihood', 'Prior', 'Posterior'), 
+       bty='n')
+```
+
+
+
+## What if Pat takes a lot of free throws?
+
+$$y \sim Binomial(k >> 3, p)$$
+
+$$p \sim Beta(2, 2)$$
+
+$k \rightarrow \inf$: prior doesn't matter
+
+## Demo: freethrows in Stan
+
+
+
+
+## MCMC animation
+
+[`http://mbjoseph.github.io/2013/09/08/metropolis.html`](http://mbjoseph.github.io/2013/09/08/metropolis.html)
+
+## Bayes in practice
+
+1. write model
+
+2. translate model
+
+3. estimate parameters
+
+## Bayes in practice
+
+1. **write model**
+
+2. translate model
+
+3. estimate parameters
+
+## Bayesian linear regression
+
+```{r, echo=FALSE, fig.width=4, fig.height=3}
+n <- 50
+x <- runif(n, 0, 3)
+y <- rnorm(n, -3 + .75 * x, 1)
+d <- data.frame(x, y)
+ggplot(d, aes(x, y)) + geom_point()
+```
+
+
+## Writing a model
+
+$$y \sim N(\mu, \sigma)$$
+
+$$\mu = X \beta$$
+
+```{r, echo=FALSE, fig.width=2, fig.height=4}
+image(t(model.matrix(lm(y ~ x))), xaxt='n', yaxt='n')
+```
+
+
+## Writing a model
+
+$y \sim N(\mu, \sigma)$
+
+$\mu = X \beta$
+
+What's missing?
+
+## Writing a model
+
+$y \sim N(\mu, \sigma)$
+
+$\mu = X \beta$
+
+$\beta \sim N(0, 2)$
+
+$\sigma \sim halfCauchy(0, 5)$
+
+## Writing a model
+
+
+\begin{columns}
+\begin{column}{0.48\textwidth}
+
+$y \sim N(\mu, \sigma)$
+
+$\mu = X \beta$
+
+$\beta \sim N(0, 2)$
+
+$\sigma \sim halfCauchy(0, 5)$
+\end{column}
+\begin{column}{0.48\textwidth}
+\includegraphics{diag}
+\end{column}
+\end{columns}
+
+
+## Writing a model
+
+\begin{columns}
+\begin{column}{0.48\textwidth}
+
+$$\big[\theta \mid y \big] = \dfrac{\big[\theta, y \big]}{\big[y \big]}$$
+
+$$\implies \big[\theta \mid y \big] \propto \big[\theta, y \big]$$
+
+Factoring $\big[\theta, y \big]$ with graph:
+
+$$\big[\theta \mid y \big] \propto \big[y \mid \beta, \sigma\big] \big[\beta \big] \big[\sigma \big]$$
+
+\end{column}
+\begin{column}{0.48\textwidth}
+\includegraphics{diag}
+\end{column}
+\end{columns}
+
+## Components of the posterior distribution
+
+\begin{columns}
+\begin{column}{0.48\textwidth}
+
+$$\big[\theta \mid y \big] \propto \big[y \mid \beta, \sigma\big] \big[\beta \big] \big[\sigma \big]$$
+
+$\big[y \mid \beta, \sigma\big]:$ likelihood
+
+$\big[\beta \big]:$ prior for slope
+
+$\big[\sigma \big]:$ prior for standard deviation
+
+\end{column}
+\begin{column}{0.48\textwidth}
+\includegraphics{diag}
+\end{column}
+\end{columns}
+
+## Bayes in practice
+
+1. write model
+
+2. **translate model**
+
+3. estimate parameters
+
+
+## Stan translation
+
+\begin{columns}
+\begin{column}{0.48\textwidth}
+
+\lstinputlisting{lm.stan}
+
+\end{column}
+\begin{column}{0.48\textwidth}
+
+$\beta \sim N(0, 2)$
+
+$\sigma \sim halfCauchy(0, 5)$
+
+$y \sim N(X \beta, \sigma)$
+\end{column}
+\end{columns}
+
+
+## Bayes in practice
+
+1. write model
+
+2. translate model
+
+3. **estimate parameters**
+
+## Estimating parameters
+
+```{r, echo=FALSE}
+X <- model.matrix(lm(y ~ x))
+```
+
+```{r, message=FALSE, results='hide'}
+library(rstan)
+stan_d <- list(y = y, X = X, n = nrow(X), p = ncol(X))
+m <- stan('lm.stan', data = stan_d, iter=1000)
+```
+
+The last line does the following:
+
+- generates MCMC algorithm for your model
+- compiles it into fast C code
+- initializes parameters
+- runs MCMC algorithm
+- formats output into a `stanfit` model
+
+
+## Evaluating convergence
+
+```{r, fig.height=4, fig.width=12}
+traceplot(m, inc_warmup = TRUE)
+```
+
+
+## Evaluating convergence
+
+```{r, fig.height=4, fig.width=12}
+traceplot(m)
+```
+
+
+## Evaluating convergence
+
+```{r}
+m
+```
+
+
+## Not enough iterations
+
+```{r, message=FALSE, echo=FALSE, results='hide'}
+library(rstan)
+m2 <- stan('lm.stan', data = stan_d, iter=100)
+```
+
+```{r, echo=FALSE}
+traceplot(m2, inc_warmup = TRUE)
+```
+
+
+
+## Posterior geometry
+
+```{r}
+pairs(m)
+```
+
+
+
+## Correlation between slope and intercept
+
+Is $\bar{x}$ positive or negative?
+
+```{r, echo=FALSE, fig.width=5, fig.height=3}
+post <- rstan::extract(m)
+beta_d <- data.frame(post$beta)
+ggplot(beta_d, aes(x=X1, y=X2)) + 
+  geom_point(alpha=.2) + 
+  xlab(expression(beta[0])) + 
+  ylab(expression(beta[1]))
+```
+
+
+
+## Visualizing posterior draws
+
+```{r, echo=FALSE, fig.width=5, fig.height=3}
+ggplot(d, aes(x, y)) + 
+  geom_abline(data=beta_d, color='red',
+              aes(slope=X2, intercept=X1), alpha=.05) + 
+  geom_point()
+```
+
+
+
+## Today's class: ladybird beetles and parasitoids
+
+![](beetle.jpg)

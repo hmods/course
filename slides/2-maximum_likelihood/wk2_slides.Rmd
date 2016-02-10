@@ -1,0 +1,126 @@
+---
+title: "Week 2: likelihood, earthquakes, and more"
+output:
+  beamer_presentation:
+    colortheme: "spruce"
+    fonttheme: "structurebold"
+    highlight: kate
+fontsize: 10pt
+---
+
+```{r, echo=FALSE, message=FALSE}
+library(ggplot2)
+```
+
+## Quick poll
+
+Help outside of class? 
+
+- open lab hours
+- message board
+
+## Access to the course notes last week
+
+![](visitors.png)
+
+## Solutions to last week's problems
+
+Posted on GitHub course site at end of class
+
+## Likelihood
+
+The joint conditional probability of observations $y_1, y_2, ..., y_n$:
+
+$$\mathcal{L}(\theta | y) = \prod_{i=1}^{n} p(y_i | \theta)$$
+
+## Maximum likelihood estimation
+
+normal model, known standard deviation
+
+$y \sim N(\mu, 1)$
+
+```{r, echo=FALSE}
+y <- rnorm(n = 100, mean = 5, sd = 1)
+```
+
+## Normal probability density 
+
+```{r, fig.width=9, fig.height=5}
+x <- seq(-3, 3, .01)
+fx <- dnorm(x, 0, 1)
+plot(x, fx, ylab = 'Probability density of x')
+```
+
+
+## Maximum likelihood estimation
+
+$$\mathcal{L}(\theta | y) = \prod_{i=1}^{n} p(y_i | \theta)$$
+
+What values of $\theta$ maximize $\mathcal{L}(\theta | y)$?
+
+
+## Maximum likelihood estimation
+
+$$\mathcal{L}(\theta | y) = \prod_{i=1}^{n} p(y_i | \theta)$$
+
+```{r}
+calc_lik <- function(y, mu) {
+  likelihood <- prod(dnorm(y, mu, sd = 1))
+  return(likelihood)
+} 
+```
+
+
+## Making a likelihood profile
+
+```{r}
+l <- 1000
+mu <- seq(4, 6, length.out = l)
+lik <- rep(NA, l)
+for (i in 1:l){
+  lik[i] <- calc_lik(y, mu[i])
+}
+```
+
+
+## Making a likelihood profile
+
+```{r, fig.width=7, fig.height=5}
+plot(mu, lik)
+```
+
+
+## Log-likelihood profile
+
+```{r, fig.width=7, fig.height=5}
+plot(mu, log(lik))
+```
+
+
+## Today's class: earthquakes & optimization
+
+![](earthquake.jpg)
+
+## The data
+
+```{r, fig.height=2.5, fig.width=4}
+ggplot(attenu, aes(x = dist, y = accel, col = mag)) + 
+  geom_point()
+```
+
+
+## Your task
+
+1. Predict peak ground acceleration at epicenter
+2. Predict attenuation curve
+
+```{r, fig.height=2.5, fig.width=4, echo=FALSE}
+ggplot(attenu, aes(x = dist, y = accel, col = mag)) + 
+  geom_point()
+```
+
+
+## A quick primer on \LaTeX$~$math equations
+
+Demo in Atom
+
