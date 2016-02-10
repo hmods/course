@@ -1,0 +1,274 @@
+---
+title: "Week 4: Poisson models"
+fontsize: 7pt
+output:
+  beamer_presentation:
+    colortheme: "spruce"
+    fonttheme: "structurebold"
+    latex_engine: xelatex
+header-includes: 
+- \usepackage{listings}
+- \lstset{basicstyle=\small}
+- \setmonofont[Scale=MatchLowercase]{Courier}
+- \setmonofont[Scale=0.8]{Courier}
+---
+
+
+```{r, echo=FALSE, message=FALSE}
+library(ggplot2)
+```
+
+## Poisson glm
+
+$$y_i \sim Poisson(\mu_i)$$
+
+$$\log(\mu) = X \beta$$
+
+Why not $\mu = X \beta$?
+
+## Offsets
+
+Account for exposure
+
+$\implies$ modeling a rate
+
+$$\log(\mu_i) = X \beta + log(offset)$$
+
+## Offsets
+
+What about the following examples?
+
+- number of events over time interval
+- number of events per attempted event
+- number of events in an area (e.g., county)
+
+## Model checking
+
+1. Prior sensitivity analysis
+2. Sensicality of inference
+3. Posterior predictive checks
+
+## Posterior predictive distribution
+
+Distribution of predicted data, given the observations
+
+$$[\tilde{y} \mid y]$$
+
+**Useful idea:**
+
+For a *good* model, predicted data resembles the real data
+
+
+## Posterior predictive check
+
+Do model predictions match the data? 
+
+**Steps:**
+
+1. for each posterior draw:
+    - simulate a response vector $y_{rep}$ 
+    - calculate some test statistic $T(y^{rep})$
+2. compare observed $T(y)$ to the distribution of $T(y^{rep})$
+
+
+## Posterior predictive check example
+
+$$y = THTHTHTHTT$$
+
+Sequence of H and T switches consistent with Bernoulli model?
+
+## The model
+
+$$y = THTHTHTHTT$$
+
+Likelihood: 
+
+$$[y_i \mid p] \sim Bernoulli(p)$$
+
+Prior: 
+
+$$[p] \sim Beta(100, 100)$$
+
+Posterior: 
+
+$$[p \mid y] \sim Beta(104, 106)$$
+
+
+## The posterior distribution for P(heads)
+
+```{r, echo = FALSE}
+y <- c(0, 1, 0, 1, 0, 1, 0, 1, 0, 0)
+```
+
+```{r, fig.width=8, fig.height=4, echo=FALSE}
+p_post <- rbeta(5000, 104, 106)
+hist(p_post, breaks = 50, xlab = 'p', 
+     ylab = expression(paste('[', p ,'|', y, ']')), freq = FALSE)
+```
+
+
+## Simulating data from the posterior
+
+1. for each posterior draw:
+    - simulate a response vector $y_{rep}$ 
+    
+```{r}
+rbinom(n = 10, size = 1, prob = p_post[1])
+```
+
+
+## Simulating data from the posterior
+
+1. for each posterior draw:
+    - simulate a response vector $y_{rep}$ 
+    
+```{r}
+# make a 2d array to store new coinflips
+n_flips <- length(y)
+n_iter <- length(p_post)
+y_rep <- array(dim = c(n_iter, n_flips))
+
+# simulate new coinflip sequences
+for (i in 1:n_iter) {
+  y_rep[i, ] <- rbinom(n_flips, 1, p_post[i])
+}
+```
+
+
+## Choosing a test statistic
+
+$$y = THTHTHTHTT$$
+
+```{r, comment = NA}
+y_rep[1:4, ]
+```
+
+
+## Choosing a test statistic
+
+Define $T(y) =$ number of switches between heads and tails in $y$
+
+```{r, comment = NA}
+y_rep[1:4, ]
+```
+
+
+## Calculating the test statistic
+
+Define a function to calculate $T(y)$
+
+```{r}
+count_n_switches <- function(y){
+  n <- length(y)
+  switches <- 0
+  for (i in 2:n) {
+    if (y[i - 1] != y[i]){
+      switches <- switches + 1
+    }
+  }
+  return(switches)
+}
+```
+
+
+## Calculating the test statistic under the model
+
+```{r}
+T_rep <- apply(y_rep, 1, count_n_switches)
+```
+
+```{r, echo = FALSE, fig.width = 9, fig.height=4}
+hist(T_rep, breaks = seq(0, 10, .5), right = FALSE, col = 'grey')
+```
+
+
+## Compare observed $T(y)$ to the distribution of $T(y^{rep})$
+
+$$y = THTHTHTHTT$$
+
+```{r}
+T_obs <- count_n_switches(y)
+```
+
+```{r, fig.width = 9, fig.height=4, echo = FALSE}
+hist(T_rep, breaks = seq(0, 10, .5), right = FALSE, col = 'grey')
+abline(v = T_obs, col = 2, lwd = 2, lty = 2)
+```
+
+
+## If you miss p-values...
+
+Bayesian p-value: $[T(y_{rep}, \theta) \geq T(y, \theta)]$
+
+```{r}
+mean(T_rep >= T_obs)
+```
+
+*How extreme are the data relative to model predictions?*
+
+## Graphical depiction: Bayesian p-value
+
+```{r, fig.width = 8, fig.height = 5, echo = FALSE, message = FALSE}
+library(ggplot2)
+library(dplyr)
+d <- data.frame(T_rep = T_rep, greq = T_rep >= T_obs) %>%
+  arrange(T_rep) %>%
+  mutate(index = 1:n())
+ggplot(d, aes(x = index, y = T_rep)) + 
+  geom_jitter(aes(color = greq), 
+              position = position_jitter(width = 0, height = 1), 
+              shape = 1, size = .3) + 
+  scale_color_discrete(guide = guide_legend(title = "T_rep >= T_obs")) + 
+  geom_hline(yintercept = T_obs, linetype = 'dashed') + 
+  geom_text(aes(label = 'T_obs', x = 2500, y = T_obs)) + 
+  scale_y_continuous(breaks = 0:10)
+```
+
+
+## Graphical depiction: Bayesian p-value
+
+```{r, echo = FALSE, fig.width = 7, fig.height = 4}
+ggplot(d, aes(x=T_rep, fill = greq)) + 
+  geom_bar() + 
+  scale_x_continuous(breaks = 0:10) + 
+  geom_vline(xintercept = T_obs, linetype = 'dashed') + 
+  scale_fill_discrete(guide = guide_legend(title = "T_rep >= T_obs")) + 
+  geom_text(aes(label = 'T_obs', x = T_obs, y = 0))
+```
+
+
+## Posterior predictive checks
+
+Model assessment tool
+
+- data consistent with posterior predictive distribution?
+- what features are captured by the model? 
+- variance, min, max, range, skewness, kurtosis, etc.
+
+## Bayesian vs. frequentist p-values
+
+**Bayesian**
+
+- uses good parameter values: $[\theta \mid y]$
+- model criticism and expansion
+- many possible test statistics
+
+**Frequentist**
+
+- uses null parameter values: $\beta = 0$
+- hypothesis testing
+- strict test statistic and rejection criteria
+
+## This week:
+
+Gall wasp example:
+
+- develop Poisson models
+- conduct posterior predictive check
+
+## The data
+
+```{r, comment = NA}
+d <- read.csv('cleaned_galls.csv')
+head(d)
+```
