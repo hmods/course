@@ -6,20 +6,20 @@ output: pdf_document
 ---
 
 
-About one out of eight women in the U.S. will develop breast cancer at some point in her lifetime. 
-Early diagnoses help with treatment of this potentially fatal disease, and these diagnoses can be made based on a variety of cytological metrics evaluated via biopsy. 
+About one out of eight women in the U.S. will develop breast cancer at some point in her lifetime.
+Early diagnoses help with treatment of this potentially fatal disease, and these diagnoses can be made based on a variety of cytological metrics evaluated via biopsy.
 Your job today is to develop a model that classifies tumors as malignant or benign based on these metrics.
 The student(s) with the most predictive model will get a prize.
 
 The data are in the `breast_cancer.csv` file.
 Details for this dataset can be found [on the UCI machine learning data repository](https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+(Original)), which is useful if you ever need data to play with.
-I split the data into two groups at random: the *training* data, which you'll use to estimate parameters, and the *test* data, which we'll use to evaluate the predictive power of the model. 
-There is a column in the data called `group`, which indicates whether an observation is part of the training or test set. 
+I split the data into two groups at random: the *training* data, which you'll use to estimate parameters, and the *test* data, which we'll use to evaluate the predictive power of the model.
+There is a column in the data called `group`, which indicates whether an observation is part of the training or test set.
 
 ## Data exploration
 
-As usual, you will want to explore the data before constructing any statistcal models. 
-Only explore the training data, and do not use the test data for data exploration/visualization. 
+As usual, you will want to explore the data before constructing any statistcal models.
+Only explore the training data, and do not use the test data for data exploration/visualization.
 We will pretend that we don't have access to the test data yet.
 
 ```{r, message = FALSE}
@@ -33,7 +33,7 @@ What is your model? Write it out in \LaTeX. Hint: you will want to use a design 
 
 *LaTeX here*
 
-What is your Stan model statement? 
+What is your Stan model statement?
 
 ```
 Your stan code
@@ -41,8 +41,8 @@ Your stan code
 
 ## Building and understanding the design matrix
 
-We mentioned that you would want to use a design matrix. 
-Specifically, your model should be of the form: 
+We mentioned that you would want to use a design matrix.
+Specifically, your model should be of the form:
 
 $y \sim Bernoulli(p)$
 
@@ -50,30 +50,30 @@ And the probability of malignancy $p$ is modeled using a logit-link:
 
 $log \Big(\dfrac{p}{1 - p} \Big) = X \beta$
 
-The design matrix $X$ contains the tumor features, and also dictates the interpretation of the coefficients $\beta$. 
-In the code block below, construct your design matrix, creating an object called `X`. 
-The included code will make an image plot of your design matrix with a horrendous color scheme. 
+The design matrix $X$ contains the tumor features, and also dictates the interpretation of the coefficients $\beta$.
+In the code block below, construct your design matrix, creating an object called `X`.
+The included code will make an image plot of your design matrix with a horrendous color scheme.
 Once you fill in your code, set the argument `eval = TRUE` inside of the curly braces at the beginning of the code chuck (this is a chunk option), otherwise the code chunk will not be evaluated when you're knitting your pdf.
 
 ```{r, eval = FALSE}
 # define your design matrix below
 X <- ...
 
-  
+
 # the code below will plot your design matrix
 library(reshape2)
 library(ggplot2)
-mX <- melt(X) 
-ggplot(mX, aes(x = Var2, y = Var1)) + 
-  geom_raster(aes(fill = value)) + 
-  scale_y_reverse() + 
-  xlab('Design matrix column') + 
-  ylab('Design matrix row') + 
+mX <- melt(X)
+ggplot(mX, aes(x = Var2, y = Var1)) +
+  geom_raster(aes(fill = value)) +
+  scale_y_reverse() +
+  xlab('Design matrix column') +
+  ylab('Design matrix row') +
   scale_fill_gradientn(colors = rainbow(20))
 ```
 
 
-For each column of $X$ you will get a coefficient, one element in $\beta$. 
+For each column of $X$ you will get a coefficient, one element in $\beta$.
 For instance, the coefficient $\beta_1$ will be associated with the first column in $X$, which we might denote $X[, 1]$, to borrow some R syntax.
 There's no sense in estimating parameters if you don't know what they mean (Abraham Lincoln said that), so below, list each element in $\beta$ and briefly describe what it represents/how you would interpret it:
 
@@ -88,8 +88,8 @@ There's no sense in estimating parameters if you don't know what they mean (Abra
 
 ## Parameter estimation
 
-Use the **training** data to estimate your model's parameters (`group == 'test'`). 
-Do not use the **test** data yet. 
+Use the **training** data to estimate your model's parameters (`group == 'train'`).
+Do not use the **test** data yet.
 Make sure that the MCMC algorithm has converged before moving forward.
 
 ```{r, message = FALSE}
@@ -117,7 +117,7 @@ Your stan code here
 generated quantities {
   real loglik_test;
   vector[n_test] logit_p_test;
-  
+
   logit_p_test <- X_test * beta;
   loglik_test <- bernoulli_logit_log(y_test, logit_p_test);  
   //returns the sum of the log likelihoods (the joint log-likelihood)
@@ -140,9 +140,9 @@ Make a histogram of the holdout log likelihood and report the posterior mean alo
 
 ## Showing predictions
 
-The whole point of building this model is to predict whether a tumor is malignant based on some features. 
+The whole point of building this model is to predict whether a tumor is malignant based on some features.
 Plot the posterior probability of tumor malignance for each holdout tumor, and show the true tumor status in the same graph.
-Multiple graph types are possible here, but we do not recommend simply copying and pasting code from another example (so far about a quarter of plots made in this way have made sense). 
+Multiple graph types are possible here, but we do not recommend simply copying and pasting code from another example (so far about a quarter of plots made in this way have made sense).
 Instead, think hard about what sort of data display would be effective, and make that plot!
 
 ```{r}
