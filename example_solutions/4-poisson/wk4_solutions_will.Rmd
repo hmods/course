@@ -1,0 +1,225 @@
+---
+title: 'Week 4 assignment: Poisson models'
+author: "Will Stutz"
+date: February 5, 2016
+output: pdf_document
+---
+
+Wasps in the family Cynipidae lay their eggs on plants which form galls around the developing larvae, providing nutrition until the larvae metamorphose and burrow out of the galls, emerging as adults.
+From any particular gall, there is variation in the number of host wasps that emerge.
+
+Here, you will construct a Bayesian model for the number of emerging cynipid wasps, using features of the galls as explanatory variables.
+The data are available in the `cleaned_galls.csv` file.
+Your task is to estimate the parameters of your model, and then to do a posterior predictive check to evaluate overdispersion.
+
+# Problem 1: looking at the data
+
+Load the data and explore how the features relate to the response variable.
+
+```{r}
+# libraries
+library(ggplot2)
+library(tidyr)
+library(rstan)
+
+# load the data
+dat <- read.csv("cleaned_galls.csv")
+
+# what kind of data do we have
+head(dat)
+  # looks like n_cynip, gall size and locality
+```
+Let's take a look at how the data are distributed across sites (i.e. sample sizes)
+```{r}
+# order of localities by sample size
+ordered_names <- sort(table(dat$gall_locality), decreasing = FALSE) %>%
+  names()
+
+# reorder localities in the data frame
+dat$gall_locality <- factor(dat$gall_locality, levels = ordered_names)
+
+# calculate mean number of wasps per sample location
+loc_means <- data.frame(gall_locality = levels(dat$gall_locality),
+  means = tapply(dat$n_cynip, dat$gall_locality,mean))
+dat <- merge(dat, loc_means, by = "gall_locality")
+
+# plot raw data with mean number of wasps
+ggplot(data = dat, aes(n_cynip, gall_locality)) +
+  geom_vline(xintercept = 0, color = "grey50") +
+  geom_jitter(, alpha = 1/5) +
+  geom_point(aes(means,gall_locality), pch = 21, fill = "seagreen3", size = 2)
+```
+
+*It looks like a few sites have lots of galls while some have only a handful. Also, there are a lot of zeros in the data (all the points jittered around zero on the x-axis). There is also variation in the means across sites, so we'll probably want to account for that in our model as well.*
+
+Let's look at the relationship between gall size and the number of wasps
+```{r}
+# number of wasps as a function of gall size
+ggplot(data = dat, aes(gall_size,n_cynip)) +
+  geom_jitter(width = 3, alpha = 1/10) +
+  stat_smooth(color = "steelblue") +
+  stat_smooth(method = "glm",
+      method.args = list(family = "poisson"), color = "seagreen3")
+  # number of emerging wasps increases with gall size
+```
+*It would appear that the number of wasps levels off at higher gall sizes relative to standard Poisson (green) regression. Perhaps a quadratic term later on might help? Let's break it down by locality first:*
+
+```{r}
+
+# break it down by locality
+ggplot(data = dat, aes(gall_size,n_cynip)) +
+  geom_jitter(alpha = 1/3) +
+  stat_smooth(color = "steelblue") +
+  stat_smooth(method = "glm",
+    method.args = list(family = "poisson"), color = "seagreen3") +
+  facet_wrap(~gall_locality)
+```
+*Hmm. It's possible that the overall pattern we saw before may have to do with different slope parameters in different populations, as there isn't too much difference between the Poisson regression (green) and the smooth curve(blue) within localities, except in the case of the Butcher Rd. site*
+
+# Problem 2: model specification
+
+What is your model? Write it in \LaTeX.
+
+*Given the above, I want to fit a model that models the number of wasps as a Poisson distributed random variable that has different mean values for each population. Additionally, I'll fit a different gall size parameter for each locality, rather than a single gall size parameter applied across all localities*
+
+$$y_i \sim Poisson(\lambda_i)$$
+
+$$log(\lambda_i) = \beta X_i$$
+
+*Here we are modeling the number of wasps $y_i$ as a Poisson distributed random variable where beta has different intercept and gall size coefficients for each population (13 populations x 2 = 26 total parameters).*
+
+What is your Stan model statement?
+
+```
+data {
+  int n; // number of galls
+  int p; // number of parameters
+  matrix[n, p] X;  // design matrix
+  int y[n];  // the number of observed wasps emerging from each gall
+}
+
+parameters {
+  vector[p] beta; // p length vector of parameters
+}
+
+model {
+  beta ~ normal(0, 5);  // use a somewhat vague Normal prior centered at zero
+  y ~ poisson_log(X * beta); // Poisson likelihood with log transformation
+}
+```
+*Note that I've given my intercept and my slope parameters all the same prior. We probably won't always do this, as it often makes sense to use different priors for these since they are fundamentally different parameters, but this prior is vague enough that it shouldn't matter too much*
+
+*Also, keep in mind that centering the intercept priors at zero means that the prior is centered around a value of 1 on the raw data scale (hint: what does e^0 equal?) and that, while it's symmetric on the log scale, it's not on the raw-data scale*
+
+# Problem 3: parameter estimation
+
+*First I want to center my gall size variable at zero so the site intercepts are not correlated with the site level gall size parameter. This also means my intercept parameters will now be estimates of mean wasp number for an average sized gall and not for gall size equals zero. I could instead center gall size within each population, but I won't do that here).*
+
+```{r}
+# what is the average call size
+mean(dat$gall_size)
+
+# center gall size(and scale to unit variance)
+dat$gsize_adj <- scale(dat$gall_size, center = TRUE, scale = TRUE) %>%
+  as.numeric  # the as.numeric() removes the attributes appended by scale()
+```
+*Next I'll use R's glm() function to create my design matrix, which is easier than doing it by hand.*
+
+```{r}
+
+# create the design matrix
+X <- glm(n_cynip ~ 0 + gall_locality + gall_locality:gsize_adj, data = dat,
+  family = "poisson") %>% model.matrix()
+    # note suppression of global intercept
+
+# create the data to input into Stan
+stan_d <- list(n = nrow(dat),
+                p = ncol(X),
+                X = X,
+                y = dat$n_cynip)
+
+# tell Stan to be aware of all of my processors when fitting models
+options(mc.cores = parallel::detectCores())
+
+# fit the Stan model (note this takes awhile because p is big (26!)
+gall_fit <- stan("poisson_glm_will.stan",
+  data = stan_d,
+  chains = 4,
+  iter = 500,
+  open_progress = FALSE)
+```
+Verify convergence using traceplots and the Rhat statistic:
+
+```{r}
+# check Rhat
+gall_fit
+
+# traceplot
+traceplot(gall_fit, pars = "beta")
+
+```
+*Looks good*
+
+# Problem 4: posterior predictive check
+
+Does your model adequately capture the variance in the emergence data, or is there overdispersion?
+
+*In addition to checking the variance predicted by the model, I'm also going to check whether my model adequately captures the number of zeros in the data. If there are more zeros in the actual data than my model predicts, it might be an indication of zero-inflation (which could be do some extra effect I haven't accounted for)*
+
+```{r}
+# extract the posteriors
+posts <- extract(gall_fit)$beta
+
+# write a function calculate the variance
+calc_var <- function(X, beta){
+  n <- nrow(X)  # number of data points
+  lambda <- c(exp(X %*% beta)) # simulate lambda for the draw
+  y <- rpois(n, lambda)
+  var_y <- var(y)
+}
+
+# write a function to calculate the number of zeros
+calc_zeros <- function(X, beta){
+  n <- nrow(X)  # number of data points
+  lambda <- c(exp(X %*% beta)) # simulate lambda for the draw
+  y <- rpois(n, lambda)
+  zero_y <- sum(y == 0)
+}
+
+# how many draws do we have
+n_draws <- nrow(posts)
+
+# create a data.frame to store our variances and zero counts
+sims <- data.frame(variance = rep(NA, n_draws),
+                      n_zeros = rep(NA, n_draws))
+
+# simulate variances and zero counts for each draw
+for(i in 1:n_draws){
+  sims[i,"variance"] <- calc_var(X, beta = posts[i, ])
+  sims[i,"n_zeros"] <- calc_zeros(X, beta = posts[i, ])
+}
+
+# calculate Bayesian P-values
+var_p <- sum(sims$variance < var(dat$n_cynip))/n_draws
+zeros_p <- sum(sims$n_zeros > sum(dat$n_cynip == 0))/n_draws
+
+# now plot the distribution of simulated variances with the actual variance
+ggplot(data = sims, aes(variance)) +
+  geom_histogram() +
+  geom_vline(xintercept = var(dat$n_cynip), color = "steelblue", size = 2) +
+  annotate("text", x = 5.5, y = 75,
+    label = paste0("p = ", var_p))
+```
+*Looks like our model captures the observed variance quite well, which would indicate that there is no overdispersion*
+
+```{r}
+# now plot the distribution of simulated number of zeros
+ggplot(data = sims, aes(n_zeros)) +
+  geom_histogram() +
+  geom_vline(xintercept = sum(dat$n_cynip == 0), color = "steelblue", size = 2) +
+  annotate("text", x = 750, y = 100,
+    label = paste0("p = ", zeros_p))
+
+```
+
+*However, it looks like we are undershooting the number of zeros by 100-200, so there may be some other factor that is causing there to be zero emerging wasps in some galls beyond what is predicted by random Poisson variation.*

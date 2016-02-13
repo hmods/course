@@ -1,0 +1,128 @@
+---
+title: 'Week 4 assignment: Poisson models'
+author: "Example solutions"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+---
+
+Wasps in the family Cynipidae lay their eggs on plants which form galls around the developing larvae, providing nutrition until the larvae metamorphose and burrow out of the galls, emerging as adults. 
+From any particular gall, there is variation in the number of host wasps that emerge. 
+
+Here, you will construct a Bayesian model for the number of emerging cynipid wasps, using features of the galls as explanatory variables. 
+The data are available in the `cleaned_galls.csv` file. 
+Your task is to estimate the parameters of your model, and then to do a posterior predictive check to evaluate overdispersion. 
+
+# Problem 1: looking at the data
+
+Load the data and explore how the features relate to the response variable. 
+
+```{r, fig.width = 6, fig.height=4}
+library(ggplot2)
+d <- read.csv('cleaned_galls.csv')
+ggplot(d, aes(x = gall_size, y = n_cynip)) + 
+  geom_count()
+ggplot(d, aes(x = gall_size, y = n_cynip)) + 
+  geom_jitter(shape = 1, position = position_jitter(width=2.5, height=.4), 
+              alpha=.5)
+ggplot(d, aes(y = gall_locality, x = n_cynip)) + geom_count()
+ggplot(d, aes(x = gall_size, y = n_cynip)) + 
+  geom_jitter(shape = 1, position = position_jitter(width=2.5, height=.4), 
+              alpha=.5) + 
+  facet_wrap(~ gall_locality)
+```
+
+# Problem 2: model specification
+
+What is your model? Write it in \LaTeX. 
+
+$y_i \sim Poisson(\lambda_i)$
+
+$\lambda_i = e^{\beta^T X_i}$
+
+What is your Stan model statement? 
+
+```
+data {
+  int n; // sample size
+  int p; // number of coefficients
+  matrix[n, p] X;
+  int y[n];
+}
+
+parameters {
+  vector[p] beta;
+}
+
+model {
+  beta ~ normal(0, 5);
+  y ~ poisson_log(X * beta);
+}
+```
+
+# Problem 3: parameter estimation
+
+Use the `rstan` package to estimate your model parameters. 
+
+```{r, results = 'hide', message = FALSE}
+# center size
+mean_size <- mean(d$gall_size)
+sd_size <- sd(d$gall_size)
+d$size <- (d$gall_size - mean(d$gall_size)) / sd_size
+
+# make glm() construct a design matrix for me with a 2nd degree polynomial
+m <- glm(n_cynip ~ size + I(size^2) + gall_locality, data=d, family=poisson)
+
+library(rstan)
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+X <- model.matrix(m)
+stan_d <- list(n = nrow(X), p = ncol(X), X = X, y = d$n_cynip)
+
+iter <- 1000
+chains <- 4
+m_fit <- stan('poisson_glm.stan', data = stan_d, 
+               chains = chains, iter = iter, cores = 2)
+```
+
+Verify convergence using traceplots and the Rhat statistic: 
+
+```{r}
+m_fit
+traceplot(m_fit, inc_warmup=TRUE)
+```
+
+# Problem 4: posterior predictive check
+
+Does your model adequately capture the variance in the emergence data, or is there overdispersion? 
+
+```{r}
+# need to simulate datasets for each posterior draw
+# the test statistic is var(y)
+post <- rstan::extract(m_fit)
+n_draws <- length(post$lp__)
+
+sim_y <- function(X, beta) {
+  # little function to simulate response data
+  n <- nrow(X)
+  lambda <- c(exp(X %*% beta))
+  y <- rpois(n, lambda)
+  return(y)
+}
+
+# create object to store variances of y
+var_y_new <- rep(NA, n_draws)
+
+# iterate through posterior draws and store variances of new data
+for (i in 1:n_draws) {
+  y_new <- sim_y(X, beta = post$beta[i, ])
+  var_y_new[i] <- var(y_new)
+}
+
+# plot histogram of simulated variances
+hist(var_y_new, breaks = 50)
+# add line to indicate observed value
+abline(v = var(d$n_cynip), col = 'red', lty = 2, lwd = 3)
+```
+
+*The model seems to have adequately captured the variance in y*.
