@@ -82,9 +82,9 @@ What is your model? Write it in \LaTeX.
 
 *Given the above, I want to fit a model that models the number of wasps as a Poisson distributed random variable that has different mean values for each population. Additionally, I'll fit a different gall size parameter for each locality, rather than a single gall size parameter applied across all localities*
 
-$$y_i \sim Poisson(\lambda_i)$$
+$$y \sim Poisson(\lambda)$$
 
-$$log(\lambda_i) = \beta X_i$$
+$$log(\lambda) = X\beta$$
 
 *Here we are modeling the number of wasps $y_i$ as a Poisson distributed random variable where beta has different intercept and gall size coefficients for each population (13 populations x 2 = 26 total parameters).*
 
