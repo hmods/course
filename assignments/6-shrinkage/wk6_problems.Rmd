@@ -1,0 +1,208 @@
+---
+title: 'Week 6 assignments: multilevel models'
+author: "Your name here"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    fig_caption: yes
+---
+
+# Understanding the motivation for multilevel models
+
+We will return to the amniote data from week 1, and explore how to fit a four level model with `lmer`.
+This week, we have written most of the code for you to alleviate some of the progamming burden and allow you to focus on the concepts. 
+This assignment is also shorter, but for those of you who want to dig deeper into the material, we have two recommended problems at the end.
+Your job is to grasp what is happening conceptually, and we have crafted some questions to point you in some important directions along the way. 
+
+First, we will load some packages and the data, and clean the data for you. 
+
+```{r, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# load the data 
+d <- read.csv("amniotes.csv")
+
+# replace -999 with NA (missing observations)
+d[d == -999] <- NA
+
+# subset data to complete observations of longevity and mass
+d <- subset(d, !is.na(maximum_longevity_y) &
+              !is.na(adult_body_mass_g)) %>%
+  droplevels() %>%
+  select(class, order, family, genus, species, 
+         maximum_longevity_y, adult_body_mass_g)
+
+# create binomial name varable (Genus + species)
+d$binomial <- paste(d$genus, d$species)
+
+# log transform longevity
+d$long <- log(d$maximum_longevity_y)
+
+# scale log transformed mass
+d$clmass <- c(scale(log(d$adult_body_mass_g)))
+```
+
+Next, we will visualize the number of observations across taxonomic levels and groups. 
+
+```{r, fig.height = 12, fig.width = 9, fig.cap='Distribution of sample sizes across taxonomic levels.'}
+par(mfrow=c(2, 2))
+barplot(sort(table(d$class)), horiz = T, las = 2, cex.names = 1,
+        xlab = 'Number of observations', 
+        main = 'Class')
+barplot(sort(table(d$order)), horiz = T, las = 2, cex.names = .5, 
+        xlab = 'Number of observations', 
+        main = 'Order')
+barplot(sort(table(d$family)), horiz = T, las = 2, cex.names = .2,
+        xlab = 'Number of observations', 
+        main = 'Family')
+barplot(sort(table(d$genus)), horiz = T, las = 2, cex.names = .1,
+        xlab = 'Number of observations', 
+        main = 'Genus')
+```
+
+**Question 1**
+
+Suppose we are interested in modeling the log longevity (lifespan) of amniotes with this data. 
+We want to know what the mean longevity is for all classes, orders, families, and genera in the dataset. 
+What about Figure 1 (the four barplots we just made) might point us toward a hierarchical model? 
+
+*Your text here*
+
+**Question 2**
+
+One non-hierarchical option would be a no pooling model, which we implement with `lm()` below. 
+
+```{r}
+no_pool <- lm(long ~ 0 + class + order + family + genus, data = d)
+# (this takes tens of seconds to run)
+```
+
+Inspect the output from this no pooling model by printing the `no_pool` object summary in your console (`summary(no_pool)`). 
+What do you notice about the output that seems problematic? 
+
+*Your text here*
+
+# Estimating parameters with `lmer` & understanding their meaning
+
+We can fit a hierarchical model for longevity as follows using `lmer`, which is in the `lme4` package:
+
+```{r, message = FALSE}
+library(lme4)
+m_fit <- lmer(long ~ 1 + (1 | class) + (1 | order) + (1 | family) + (1 | genus), 
+            data = d)
+m_fit
+```
+
+**Question 3**
+
+Write out the model in mathematical notation, either long-form or using matrix operations. 
+Hint: one efficient way to do this is to use multiple design matrices.
+
+Your \LaTeX
+
+**Question 4**
+
+In English, what does the `(Intercept)` parameter represent (accessible via `fixef(m_fit)`)?
+
+*Your text here*
+
+**Question 5**
+
+In English, what do the random effect standard deviations represent? 
+
+*Your text here*
+
+**Question 6**
+
+Why does the default plotting method for the random effects (e.g.,  `plot(ranef(m_fit))`) make normal quantile-quantile plots? 
+
+*Your text here*
+
+# Including more information in the model
+
+We have a lot of other information about each species that we have ignored up to this point. 
+For instance, we might want to include body mass as a predictor, since large bodied species might live longer. 
+
+```{r, fig.width = 3, fig.height = 2.5, fig.align='center'}
+ggplot(d, aes(x = clmass, y = long)) + 
+  geom_point(alpha = .1) + 
+  xlab('Centered log mass') + 
+  ylab('log(Longevity)')
+```
+
+**Question 7**
+
+If we include body mass as a covariate, what do you expect will happen to our estimate of the residual standard deviation?
+
+*Your text here*
+
+**Question 8**
+
+What do you expect will happen to the estimated group-level standard deviations when including body mass in the model?
+
+*Your text here*
+
+Below, we fit a model using centered log mass as a covariate. 
+
+```{r}
+m_fit2 <- lmer(long ~ 1 + clmass + 
+               (1 | class) + (1|order) + (1|family) + (1|genus), 
+             data = d)
+```
+
+Compare the estimates of the residual standard deviation and group-level standard deviations to those from our first model that did not include mass. 
+
+```{r}
+VarCorr(m_fit)
+VarCorr(m_fit2)
+```
+
+Compare your predictions to the results - you may be surprised.
+
+# Pat's free throws continued
+
+**Question 9**
+
+Thinking back to the day that you saw Pat miss 3 free throws, you remember that you also noticed other individuals in the gym taking some free throws. 
+Specifically, you happen to recall 20 other people shooting, who made 2/4, 13/17, 12/12, 7/15, 4/11, 14/16, 6/8, 7/14, 10/15, 2/3, 9/13, 1/3, 7/12, 6/14, 1/10, 4/4, 10/11, 3/3, 7/18, and 3/5 free throws. 
+Using this new information, make a hierarchical model to compute the maximum likelihood estimate for the probability that Pat makes a free throw. 
+
+```{r}
+# your code here
+```
+
+Print the maximum likelihood estimate for Pat's probability of making a free throw.
+
+```{r}
+# your code here (remember that coefficients are reported on the logit scale)
+```
+
+Why isn't the estimate 0, as it was before with our non-hierarchical model? 
+
+*Your text here*
+
+**Conceptual check (optional): visualizing estimated priors**
+
+You just acquired maximum likelihood estimates for the parameters for the prior distribution of the probability that a person in the gym makes a free throw. 
+These parameters are calculated on the logit scale, but we usually think of probabilities on the inverse logit scale (bounded between 0 and 1). 
+Below, visualize the probability density of $p$ for a new player based on the model output. 
+You'll need to use the intercept and the among player standard deviation, and also the `plogis` function to transform the logit probabilities to probabilities. 
+Hint: visualize the normal density on the logit scale first with `dnorm`, so that you get your estimated "bell curve", then transform the x-axis to the probability scale. 
+
+```{r}
+#your code here
+```
+
+**Programming challenge (optional): where `lme4` fails**
+
+The `lme4` package is useful to acquire point estimates, but not very useful if you need to quantify the uncertainty in the model parameters. 
+In particular, there is no easy way to incorporate uncertainty in the hyperparameters; more on this [here](http://stats.stackexchange.com/questions/147836/prediction-interval-for-lmer-mixed-effects-model-in-r) and [here](https://stat.ethz.ch/pipermail/r-sig-mixed-models/2010q1/003447.html).
+In contrast, a Bayesian approach automatically quantifies uncertainty for **all** model parameters. 
+
+As an optional challenge, implement the amniote model in Stan below and plot the posterior distributions for the hyperparameters. 
+
+```{r}
+# your code here
+```
