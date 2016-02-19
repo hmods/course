@@ -1,0 +1,432 @@
+---
+title: "Hieararchical models: 1"
+fontsize: 7pt
+output:
+  beamer_presentation:
+    colortheme: "spruce"
+    fonttheme: "structurebold"
+    latex_engine: xelatex
+header-includes: 
+- \usepackage{listings}
+- \lstset{basicstyle=\small}
+- \setmonofont[Scale=MatchLowercase]{Courier}
+- \setmonofont[Scale=0.8]{Courier}
+---
+
+## So you're having a hard time choosing priors...
+
+![](confused.jpg)
+
+## So you're having a hard time choosing priors...
+
+- Not surprising!
+
+- Takes practice
+
+
+## Useful tips for prior selection
+
+1. Any constraints on parameter? 
+
+- variance parameters: $\sigma > 0$
+- probabilities: $0 \leq p \leq 1$
+- correlations: $-1 \leq \rho \leq 1$
+
+## Useful tips for prior selection
+
+1. Any constraints on parameter? 
+
+2. Prior predictive distribution: 
+
+$$[y]$$
+
+## Review: posterior predictive distribution
+
+Distribution of predicted data, given the observations
+
+$$[\tilde{y} \mid y]$$
+
+**Concept:**
+
+For a *good* model, predicted data resembles the real data
+
+
+## Prior predictive distribution
+
+Distribution of predicted data, given your priors
+
+$$[y]$$
+
+**Concept:**
+
+For *good* priors, predicted data resembles your expectations for the data
+
+
+## Prior predictive distribution simulations
+
+1. Simulate parameter draws from prior 
+
+2. Simulate data using these parameters
+
+* how different from posterior predictive simulation?
+
+## Useful tips for prior selection
+
+1. Constraints
+
+2. Prior predictive distribution
+
+3. Expert recommendations [https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations](https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations)
+
+## Useful tips for prior selection
+
+1. Constraints
+
+2. Prior predictive distribution
+
+3. Expert recommendations 
+
+4. Treat the prior parameters as unknown! 
+
+- aka use a hierarchical model
+
+## Hierarchical models: why bother?
+
+![](zuur.jpg)
+
+
+## Gall wasp example
+
+**Goal**: Estimate mean number of wasps for each location
+
+1. Sample locations $j=1,..., J$
+
+2. Sample galls at each location
+
+3. Gall $i$ is from site $j$
+
+
+## The data
+
+```{r, echo = FALSE, message = FALSE}
+library(reshape2)
+library(ggplot2)
+library(dplyr)
+d <- read.csv('cleaned_galls.csv')
+ggplot(d, aes(x=n_cynip, y = gall_locality)) + 
+  geom_count() + 
+  xlab('Number of wasps emerging') + 
+  ylab('Location')
+```
+
+
+## Sample sizes by location
+
+```{r, echo = FALSE}
+d %>%
+  group_by(gall_locality) %>%
+  summarize(n = n()) %>%
+  ggplot(aes(x = n, y = reorder(gall_locality, -n))) + 
+  geom_point() + 
+  xlab('Sample size') + 
+  ylab('Location')
+```
+
+
+## Two extreme choices to estimate means
+
+1. Complete pooling: all locations are the same
+
+2. No pooling: locations have different means
+
+## Complete pooling
+
+```{r}
+complete_pool <- glm(n_cynip ~ 1, 
+                     data = d, family = poisson)
+```
+
+$$y_i \sim Poisson(\lambda)$$
+
+$$log(\lambda) = \beta_0$$
+
+## Complete pooling
+
+```{r, echo = FALSE}
+ggplot(d, aes(x=n_cynip, y = gall_locality)) + 
+  geom_count() + 
+  xlab('Number of wasps emerging') + 
+  ylab('Location') + 
+  geom_vline(xintercept = exp(coef(complete_pool)), 
+             col = 2, linetype = 'dashed')
+```
+
+
+## No pooling: locations different and independent
+
+```{r}
+no_pool <- glm(n_cynip ~ 0 + gall_locality, 
+                     data = d, family = poisson)
+```
+
+$$y_i \sim Poisson(\lambda_i)$$
+
+$$log(\lambda_i) = \beta_{j[i]}$$
+
+
+## No pooling 
+
+```{r, echo = FALSE}
+np_df <- data.frame(gall_locality = sort(levels(d$gall_locality)), 
+                    n_cynip = exp(coef(no_pool)))
+ggplot(d, aes(x=n_cynip, y = gall_locality)) + 
+  geom_point(data = np_df, col = 'red', shape = 19, size = 6) + 
+  geom_count() + 
+  xlab('Number of wasps emerging') + 
+  ylab('Location')
+```
+
+
+## Uncertainty and sample size
+
+```{r, message = FALSE, echo = FALSE, warning=FALSE}
+cis <- confint(no_pool)
+np_df$lo <- exp(cis[, 1])
+np_df$hi <- exp(cis[, 2])
+
+d %>%
+  group_by(gall_locality) %>%
+  summarize(n = n()) %>%
+  full_join(np_df) %>%
+  ggplot(aes(x = n, y = n_cynip)) + 
+  geom_point() + 
+  geom_segment(aes(x = n, xend = n, 
+                   y = lo, yend = hi)) + 
+  xlab('Sample size') + 
+  ylab('Estimated mean number of wasps') + 
+  scale_x_log10()
+```
+
+
+## Which estimates do we trust?
+
+```{r, echo = FALSE, message = FALSE}
+d %>%
+  group_by(gall_locality) %>%
+  summarize(n = n()) %>%
+  full_join(np_df) %>%
+  ggplot(aes(x = n, y = n_cynip)) + 
+  geom_point() + 
+  geom_segment(aes(x = n, xend = n, 
+                   y = lo, yend = hi)) + 
+  xlab('Sample size') + 
+  ylab('Estimated mean number of wasps') + 
+  scale_x_log10()
+```
+
+
+## How can we improve estimates with small $n$?
+
+```{r, echo = FALSE, message = FALSE}
+d %>%
+  group_by(gall_locality) %>%
+  summarize(n = n()) %>%
+  full_join(np_df) %>%
+  ggplot(aes(x = n, y = n_cynip)) + 
+  geom_point() + 
+  geom_segment(aes(x = n, xend = n, 
+                   y = lo, yend = hi)) + 
+  xlab('Sample size') + 
+  ylab('Estimated mean number of wasps') + 
+  scale_x_log10()
+```
+
+
+## Gall wasp hierarchical model
+
+$$y_i \sim \text{Poisson}(\lambda_i)$$
+
+$$log(\lambda_i) = \alpha_0 + \alpha_{j[i]}$$
+
+$$\alpha_j \sim Normal(0, \sigma_\alpha)$$
+
+## Parameter interpretation
+
+$$y_i \sim \text{Poisson}(\lambda_i)$$
+
+$$log(\lambda_i) = \alpha_0 + \alpha_{j[i]}$$
+
+$$\alpha_j \sim Normal(0, \sigma_\alpha)$$
+
+## Fitting a hierarchical model
+
+```{r, message=FALSE}
+library(lme4)
+partial_pool <- glmer(n_cynip ~(1 | gall_locality), 
+              data = d, family = poisson)
+```
+
+## Understanding the model object
+
+```{r}
+partial_pool
+```
+
+
+## Is this a Bayesian model?
+
+$$y_i \sim \text{Poisson}(\lambda_i)$$
+
+$$log(\lambda_i) = \alpha_0 + \alpha_{j[i]}$$
+
+$$\alpha_j \sim Normal(0, \sigma_\alpha)$$
+
+
+## Comparing estimates: which estimates were shrunk?
+
+```{r, echo = FALSE, message = FALSE}
+# create data frame to plot results
+n_locality <- length(unique(d$gall_locality))
+shrink_df <- data.frame(gall_locality = rep(sort(unique(d$gall_locality)), 3), 
+                        model = rep(c('1-complete_pooling', 
+                                      '3-no pooling', 
+                                      '2-partial pooling'), 
+                                    each = n_locality))
+
+# add intercepts from model objects
+shrink_df$intercept[1:n_locality] <- coef(complete_pool)
+shrink_df$intercept[(1 + n_locality):(2 * n_locality)] <- coef(no_pool)
+shrink_df$intercept[(1 + 2 * n_locality):(3 * n_locality)] <- coef(partial_pool)$gall_locality[, 1]
+
+# make a data frame with the sample sizes
+shrink_df <- d %>%
+  group_by(gall_locality) %>%
+  summarize(n = n()) %>%
+  right_join(shrink_df)
+
+
+# create a plot to illustrate the compromise between no pooling and partial pooling
+library(ggrepel)
+ggplot(shrink_df, aes(x = model, y = exp(intercept))) + 
+  theme_minimal() + 
+  geom_point(color = 'blue', size = 3) + 
+  geom_line(aes(group = gall_locality), color = 'blue', alpha = .6) + 
+  geom_text_repel(aes(label = paste('n =', n)), 
+                data = subset(shrink_df, model == '3-no pooling'), 
+            nudge_x = .3, size = 3) + 
+  ylab('Expected number of emerging wasps') + 
+  xlab('Model')
+```
+
+
+## Bayesian connections
+
+$$y_i \sim \text{Poisson}(\lambda_i)$$
+
+$$log(\lambda_i) = \alpha_{j[i]}$$
+
+$$\alpha_j \sim Normal(\alpha_0, \sigma_\alpha)$$
+
+
+## Bayesian connections
+
+Estimated distribution of intercepts
+
+$$\alpha_j \sim Normal(\alpha_0, \sigma_\alpha)$$
+
+```{r, echo = FALSE}
+xvals <- seq(-2.5, 2, .001)
+alpha_sd <- VarCorr(partial_pool) %>% unlist() %>% sqrt()
+plot(xvals, dnorm(xvals, fixef(partial_pool), sd = alpha_sd), type = 'l', 
+     xlab = expression(paste('Varying intercept: ', alpha)), 
+     ylab = expression(paste('Estimated probability density: ', alpha)), 
+     col = 2)
+```
+
+
+## Bayesian connections
+
+Estimated distribution of intercepts
+
+
+```{r, echo = FALSE}
+plot(xvals, dnorm(xvals, fixef(partial_pool), sd = alpha_sd), type = 'l', 
+     xlab = expression(paste('Varying intercept: ', alpha)), 
+     ylab = expression(paste('Estimated probability density: ', alpha)), 
+     col = 2)
+text(x = fixef(partial_pool), y = 0.1, labels = expression(alpha[0]), 
+     col = 2, cex = 2)
+text(x = c(fixef(partial_pool) - alpha_sd, fixef(partial_pool) + alpha_sd), 
+     y = 0.05, 
+     labels = c(expression(alpha[0] - sigma[alpha]), 
+                expression(alpha[0] + sigma[alpha])), col = 2)
+rug(unlist(coef(partial_pool)), col = 4, lwd = 2)
+```
+
+
+## Bayesian connections
+
+
+Complete pooling: $\sigma_\alpha \rightarrow 0$
+
+```{r, echo = FALSE}
+plot(xvals, dnorm(xvals, fixef(partial_pool), sd = alpha_sd), type = 'l', 
+     xlab = expression(paste('Varying intercept: ', alpha)), 
+     ylab = expression(paste('Estimated probability density: ', alpha)), 
+     col = 2)
+lines(xvals, dnorm(xvals, fixef(partial_pool), sd = 1E-4))
+```
+
+
+## Bayesian connections
+
+No pooling: $\sigma_\alpha \rightarrow \infty$
+
+```{r, echo = FALSE}
+plot(xvals, dnorm(xvals, fixef(partial_pool), sd = alpha_sd), type = 'l', 
+     xlab = expression(paste('Varying intercept: ', alpha)), 
+     ylab = expression(paste('Estimated probability density: ', alpha)), 
+     col = 2)
+lines(xvals, dnorm(xvals, fixef(partial_pool), sd = 1E4))
+```
+
+
+## Partial pooling: a reasonable compromise
+
+Complete pooling: $\sigma_\alpha \rightarrow 0$
+
+No pooling: $\sigma_\alpha \rightarrow \infty$
+
+Partial pooling: $0 < \sigma_\alpha < \infty$
+
+## Hierarchical models
+
+Why bother? 
+
+1. Shrinkage & partial pooling
+    - sharing information among groups
+    
+    
+## Hierarchical models
+
+Why bother? 
+
+1. Shrinkage & partial pooling
+    - sharing information among groups
+    
+How many groups do we need to justify hierarchical modeling?
+
+
+## Hierarchical models
+
+Why bother? 
+
+1. Shrinkage & partial pooling
+
+2. Predictions for new groups
+
+## This week
+
+Amniotes & free throws redux
+
+![](pat.jpg)
