@@ -1,0 +1,411 @@
+---
+title: 'Week 5 assignment: Binomial models'
+author: "Will Stutz"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+---
+
+
+About one out of eight women in the U.S. will develop breast cancer at some point in her lifetime.
+Early diagnoses help with treatment of this potentially fatal disease, and these diagnoses can be made based on a variety of cytological metrics evaluated via biopsy.
+Your job today is to develop a model that classifies tumors as malignant or benign based on these metrics.
+The student(s) with the most predictive model will get a prize.
+
+The data are in the `breast_cancer.csv` file.
+Details for this dataset can be found [on the UCI machine learning data repository](https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+(Original)), which is useful if you ever need data to play with.
+I split the data into two groups at random: the *training* data, which you'll use to estimate parameters, and the *test* data, which we'll use to evaluate the predictive power of the model.
+There is a column in the data called `group`, which indicates whether an observation is part of the training or test set.
+
+## Data exploration
+
+As usual, you will want to explore the data before constructing any statistcal models.
+Only explore the training data, and do not use the test data for data exploration/visualization.
+We will pretend that we don't have access to the test data yet.
+
+```{r, message = FALSE}
+# some useful libraries
+library(ggplot2)
+library(rstan)
+library(reshape)
+library(tidyr)
+
+# set some options
+options(mc.cores = parallel::detectCores())
+
+# upload the data
+dat <- read.csv("data/breast_cancer.csv")
+
+# let's go ahead and just pull the training data output
+train <- dat[dat$group == "train",] %>% droplevels
+
+# how big is the data set?
+dim(train)
+  # 333 observations and 13 data columns
+
+# what kind of data do we have?
+head(train)
+summary(train)
+  # looks like a bunch of integer variables that vary between 1 and 10
+  # 'malignant' must be whether the tumor was malignant or not
+
+# how many cohorts?
+table(train$cohort)
+  # 8!
+
+# are there differences between cohorts?
+
+  # calculate means
+  cohort_means <- data.frame(cohort = levels(train$cohort),
+    prob = as.vector(tapply(train$malignant, train$cohort, mean)))
+
+  # add to Data
+  train <- merge(train,cohort_means,by = c("cohort"))
+
+  # plot raw data with cohort means
+  ggplot(data = train, aes(cohort,malignant)) +
+    geom_jitter(height = 0.05) +
+    geom_point(aes(y = prob), color = "steelblue", size = 3)
+
+# let's melt all the predictor variables into a single column
+train_melt <- melt(train, id.vars = c("id","cohort","group","malignant","prob"))
+
+# are there correlations between the predictors?
+library(GGally) # for the ggpairs function
+ggpairs(train[,c(2:10)])
+  # hard to see but shape and size uniformity are highly correlated
+
+# plot the predictor data versus malignancy
+ggplot(data = train_melt, aes(value, malignant)) +
+  facet_wrap(~variable) +
+  geom_jitter(height = 0.05, color = "grey30") +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"))
+  # all are positively associated with the probability of malignancy
+
+```
+
+
+## Model structure
+
+What is your model? Write it out in \LaTeX. Hint: you will want to use a design matrix.
+
+$y \sim Bernoulli(p)$
+
+$logit(p) = X \beta$
+
+What is your Stan model statement?
+
+```
+data {
+  // integer inputs
+  int n;  // the number of samples
+  int n_pred;  // the number of predictors
+  int n_cohort;  // the number of cohorts
+
+  // integer vector inputs
+  int<lower=0, upper=1> y[n];   // observed malignancies
+
+  // design matrix
+  matrix[n,n_pred + n_cohort] X;
+}
+
+parameters {
+
+  // vector intercpet, betas for predictors and cohort means
+  vector [n_pred + n_cohort] beta; //
+}
+
+model {
+
+  // define priors for continuous predictors
+  beta[1:n_pred] ~ cauchy(0, 3);
+
+  // define priors for cohort effects
+  beta[n_pred + 1:11] ~ cauchy(0,5);
+  beta[12] ~ normal(0,5);
+  beta[13:n_pred+n_cohort] ~ cauchy(0,5);
+
+  // define the likelihood
+  y ~ bernoulli_logit(X*beta);
+
+}
+
+```
+
+## Building and understanding the design matrix
+
+We mentioned that you would want to use a design matrix.
+Specifically, your model should be of the form:
+
+$y \sim Bernoulli(p)$
+
+And the probability of malignancy $p$ is modeled using a logit-link:
+
+$log \Big(\dfrac{p}{1 - p} \Big) = X \beta$
+
+The design matrix $X$ contains the tumor features, and also dictates the interpretation of the coefficients $\beta$.
+In the code block below, construct your design matrix, creating an object called `X`.
+The included code will make an image plot of your design matrix with a horrendous color scheme.
+Once you fill in your code, set the argument `eval = TRUE` inside of the curly braces at the beginning of the code chuck (this is a chunk option), otherwise the code chunk will not be evaluated when you're knitting your pdf.
+
+```{r, eval = TRUE}
+# calculate principal components of uniformity
+unif_pca <- prcomp(~shape_uniformity + size_uniformity, data = train,
+    center = TRUE, scale = TRUE)
+
+# add to data
+train$uniformity <- unif_pca$x[,1]
+
+# center variables
+train_centered <- train # create new data frame
+train_centered[,c(3,6:11)] <- train_centered[,c(3,6:11)] - 5.5
+  # center variables at 5.5 since they are on a 1-10 scale
+
+
+# define your design matrix below
+X <- model.matrix(~0 + clump_thickness + uniformity + marginal_adhesion +
+  epithelial_size + bare_nuclei + bland_chromatin + normal_nucleoli + mitoses
+  + cohort, data = train_centered)
+
+
+# the code below will plot your design matrix
+mX <- melt(X)
+ggplot(mX, aes(x = X2, y = X1)) +
+  geom_raster(aes(fill = value)) +
+  scale_y_reverse() +
+  xlab('Design matrix column') +
+  ylab('Design matrix row') +
+  scale_fill_gradient2(low = "steelblue",  mid = "white", high = "seagreen3")
+```
+
+
+For each column of $X$ you will get a coefficient, one element in $\beta$.
+For instance, the coefficient $\beta_1$ will be associated with the first column in $X$, which we might denote $X[, 1]$, to borrow some R syntax.
+There's no sense in estimating parameters if you don't know what they mean (Abraham Lincoln said that), so below, list each element in $\beta$ and briefly describe what it represents/how you would interpret it:
+
+
+1. $\beta_1$ represents *the increase in the logit probability that a tumor is malignant given an increase of 1 point in clump thickness*
+
+2. $\beta_2$ represents *the increase in the logit probability that a tumor is malignant given an increase of 1 point in uniformity*
+
+3. $\beta_3$ represents *the increase in the logit probability that a tumor is malignant given an increase of 1 point in marginal adhesion*
+
+4. $\beta_4$ represents *the increase in the logit probability that a tumor is malignant given an increase of 1 point in epithelial size*
+
+5. $\beta_5$ represents *the increase in the logit probability that a tumor is malignant given an increase of 1 point in bare_nuclei*
+
+6. $\beta_6$ represents *the increase in the logit probability that a tumor is malignant given an increase of 1 point in bland chromatin*
+
+7. $\beta_7$ represents *the increase in the logit probability that a tumor is malignant given an increase of 1 point in normal nucleoli*
+
+8. $\beta_8$ represents *the increase in the logit probability that a tumor is malignant given an increase of 1 point in mitoses*
+
+9. $\beta_9$ represents *the logit probability that a tumor is malignant it the carrier was in cohort 1*
+
+10. $\beta_{10}$ represents *the logit probability that a tumor is malignant it the carrier was in cohort 2*
+
+11. $\beta_{11}$ represents *the logit probability that a tumor is malignant it the carrier was in cohort 3*
+
+12. $\beta_{12}$ represents *the logit probability that a tumor is malignant it the carrier was in cohort 4*
+
+13. $\beta_{13}$ represents *the logit probability that a tumor is malignant it the carrier was in cohort 5*
+
+14. $\beta_{14}$ represents *the logit probability that a tumor is malignant it the carrier was in cohort 6*
+
+15. $\beta_{15}$ represents *the logit probability that a tumor is malignant it the carrier was in cohort 7*
+
+16. $\beta_{16}$ represents *the logit probability that a tumor is malignant it the carrier was in cohort 8*
+
+
+## Parameter estimation
+
+Use the **training** data to estimate your model's parameters (`group == 'train'`).
+Do not use the **test** data yet.
+Make sure that the MCMC algorithm has converged before moving forward.
+
+```{r, message = FALSE}
+
+# build the Data
+stan_d <- list(n = nrow(train),
+  n_pred = 8,
+  n_cohort = length(levels(train$cohort)),
+  X = X,
+  y = train$malignant)
+
+# fit Model
+tumor_fit <- stan("tumor_glm_will.stan", data = stan_d)
+
+# check Rhat
+print(tumor_fit)
+
+# check traceplots
+rstan::traceplot(tumor_fit, pars = "beta")
+```
+
+
+## Out of sample predictive power
+
+One measure of a model's ability to predict new data is the log likelihood of new data, given the parameters of the model $[\tilde{y} \mid \theta]$, where $\tilde{y}$ is the new data (the **test** or **validation** data), and the parameters $\theta$ have been estimated from other data (e.g., the **training** data).
+
+Hints:
+
+- this is done most easily via a new design matrix $X_{test}$, which can be multiplied by the vector of model parameters, and must be declared in the `data` block
+- make sure that if you used any feature scaling or centering in the training data, that the exact same scaling/centering schemes are applied to the test set
+- you'll use the `generated quantities` block to calculate the log-likelihood of the test data
+- you can obtain the joint log likelihood with the `bernoulli_logit_log` function in Stan, and I wrote a generated quantities model block for you below, which should be the last block in your new Stan model statement
+
+What is your updated Stan model?
+
+```
+data {
+  // integer inputs
+  int n;  // the number of samples
+  int n_pred;  // the number of predictors
+  int n_cohort;  // the number of cohorts
+  int n_test; // number of individuals in the test data
+
+
+  // integer vector inputs
+  int<lower=0, upper=1> y[n];   // observed malignancies
+  int<lower=0, upper=1> y_test[n_test];   // observed for test data
+
+  // design matrix
+  matrix[n,n_pred + n_cohort] X;
+  matrix[n_test, n_pred + n_cohort] X_test;
+}
+
+parameters {
+
+  // vector intercept, betas for predictors and cohort means
+  vector [n_pred + n_cohort] beta; //
+}
+
+model {
+
+
+  // define priors for continuous predictors
+  beta[1:n_pred] ~ cauchy(0, 3);
+
+  // define priors for cohort effects
+  beta[n_pred + 1:11] ~ cauchy(0,5);
+  beta[12] ~ normal(0,5); #shrinks estimate for cohort 4 towards 50%
+  beta[13:n_pred+n_cohort] ~ cauchy(0,5);
+
+  // define the likelihood
+  y ~ bernoulli_logit(X*beta);
+
+}
+
+generated quantities {
+  real loglik_test;
+  vector[n_test] logit_p_test;
+
+  logit_p_test <- X_test * beta;
+  loglik_test <- bernoulli_logit_log(y_test, logit_p_test);
+  //returns the sum of the log likelihoods (the joint log-likelihood)
+}
+
+```
+
+Acquire the posterior distribution of the model parameters and the holdout log likelihood.
+
+```{r}
+# calculate new PCA using all the data
+dat$uniformity <- prcomp(~size_uniformity + shape_uniformity, data = dat,
+  center = TRUE, scale = TRUE)$x[,1]
+
+# center variables
+dat_centered <- dat # create new data frame
+dat_centered[,c(2,5:10)] <- dat_centered[,c(2,5:10)] - 5.5
+  # center variables at 5.5 since they are on a 1-10 scale
+
+# pull test data
+test_centered <- dat[dat$group == "test",]
+
+# pull training data
+train_centered <- dat[dat$group == "train",]
+
+# define training design matrix
+X <- model.matrix(~0 + clump_thickness + uniformity + marginal_adhesion +
+  epithelial_size + bare_nuclei + bland_chromatin + normal_nucleoli + mitoses
+  + cohort, data = train_centered)
+
+# define test design matrix
+X_test <- model.matrix(~0 + clump_thickness + uniformity + marginal_adhesion +
+  epithelial_size + bare_nuclei + bland_chromatin + normal_nucleoli + mitoses
+  + cohort, data = test_centered)
+
+# build the Data
+stan_d <- list(n = nrow(train_centered),
+  n_pred = 8,
+  n_cohort = length(levels(train_centered$cohort)),
+  n_test = nrow(test_centered),
+  X = X,
+  x_test = X_test,
+  y = train_centered$malignant,
+  y_test = test_centered$malignant)
+
+# fit Model
+tumor_fit_test <- stan("tumor_glm_test_will.stan", data = stan_d)
+
+# check Rhat
+print(tumor_fit_test, pars = c("beta","loglik_test"))
+
+# check traceplots
+rstan::traceplot(tumor_fit_test, pars = c("beta","loglik_test"))
+
+
+
+```
+
+Make a histogram of the holdout log likelihood and report the posterior mean along with a 95% credible interval.
+
+```{r}
+# extract summed log-likelihoods for each draw
+logliks <- rstan::extract(tumor_fit_test)$loglik_test
+
+# create histogram
+qplot(logliks, geom = "histogram")
+
+# calculate mean and 95% CI
+data.frame(mean = mean(logliks),
+  low_ci = quantile(logliks, prob = c(0.025)),
+  hi_ci = quantile(logliks, prob = c(0.975)))
+
+```
+
+
+## Showing predictions
+
+The whole point of building this model is to predict whether a tumor is malignant based on some features.
+Plot the posterior probability of tumor malignance for each holdout tumor, and show the true tumor status in the same graph.
+Multiple graph types are possible here, but we do not recommend simply copying and pasting code from another example (so far about a quarter of plots made in this way have made sense).
+Instead, think hard about what sort of data display would be effective, and make that plot!
+
+```{r}
+library(coda)
+# extract logit probabilities for each test tumor
+logit_probs <- as.mcmc(rstan::extract(tumor_fit_test)$logit_p_test)
+
+# calculate mean and 95% credible intervals for each patient
+prob_summary <- summary(logit_probs)
+
+# create data frame for plotting
+plot_data <- data.frame(patient = as.character(test_centered$id),
+  cohort = test_centered$cohort,
+  malignant = as.factor(test_centered$malignant),
+  mean = prob_summary$statistics[,"Mean"],
+  lwr = prob_summary$quantiles[,"2.5%"],
+  upr = prob_summary$quantiles[,"97.5%"])
+
+# plot
+ggplot(data = plot_data, aes(patient, mean)) +
+  geom_hline(yintercept = 0, lty = "dotted") +
+  geom_errorbar(aes(ymin = lwr, ymax = upr), color = "grey70",width = 0.02) +
+  geom_point(aes(color = malignant)) +
+  facet_wrap(~cohort,ncol = 3,scales = "free_x") +
+  labs(y = "logit probability of malignancy", x = "patient") +
+  theme_bw() +
+  theme(axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.grid = element_blank())
+```
