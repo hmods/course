@@ -1,0 +1,126 @@
+---
+title: 'Week 7 assignment: Bayesian hierarchical models'
+author: "Your name here"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document
+---
+
+The goal of today's assignment is for you to execute a Bayesian analysis of a hierarchical model from start to finish. 
+We will work with Gelman's radon data, which should be familiar to you if you have been keeping up with Gelman and Hill. 
+If not, see chapter 13 for some useful content.
+Radon is a radioactive gas that causes lung cancer.
+
+The data are in the file `radon.csv`, which contains the log radon mesurements in basements and first floors of various houses in different counties across the U.S, along with a measurement of the average log uranium level in each county.
+Take a moment to explore the data with the following question in mind: how do radon levels compare among floors and basements across counties in the U.S.?
+
+```{r}
+# your code here
+```
+
+Your job is to model the log radon levels as a function of floor and county using a hierarchical model. 
+This is a "choose your own adventure" exercise, as you may choose among four possible models which vary in complexity. 
+All models should include a basement vs. first floor effect, as this is known to affect radon levels, and beyond that the options from easiest to hardest are:
+
+1. varying intercepts at the county level (a "random intercept" model)
+2. varying intercepts along with effects of county-level mean uranium
+3. varying intercepts and basement effects at the county level (a "random intercept & slope" model)
+4. varying intercepts and slopes with county-level mean uranium effects
+
+Detailed model descriptions can be found for all of these models. 
+Models 1 and 2 are described in Chapter 12, and models 3 and 4 are in Chapter 13 of Gelman and Hill. 
+
+Which model do you want to implement? 
+
+*Your text here (1, 2, 3, or 4)*
+
+# Model specification
+
+Specify your model in mathematical notation below. 
+Be sure to specify priors for all parameters (it's a proper Bayesian model after all, none of that `lme4` nonsense).
+
+*Your* \LaTeX
+
+# Prior predictive simulations
+
+To evaluate the implications of your priors, simulate from the prior predictive distribution below.
+
+```{r}
+# your code here
+```
+
+Visualize the data in a way that makes sense for the question, and evaluate based on your knowledge (or lack thereof) of radon measurements in houses whether the priors make sense. 
+It's perfectly acceptable to tune your priors until they make sense (but don't use the `log_radon` data to tune the priors!).
+Unless you already know a lot about radon, do a quick internet search to get a prior sense of the mean and range of log radon levels that tend to get recorded in houses, e.g., [here](http://www.who.int/mediacentre/factsheets/fs291/en/).
+The units in the original data were becquerels per cubic meter $\frac{Bq}{m^3}$ (you can't make this stuff up) and these values were log transformed to get the `log_radon` column. 
+
+```{r}
+# your code here
+```
+
+
+# Parameter interpretation
+
+Write an english language description of your model parameters (at least all of the hyperparameters):
+
+- $\sigma_y$: the residual standard deviation - accounts for unexplained variance in the log radon measurements at the observation level
+
+- *Your other parameter descriptions here and below*
+
+
+# Parameter estimation
+
+Write a Stan file that expresses the model and priors outlined above: 
+
+```
+Your Stan code
+```
+
+Estimate the parameters, evaluate convergence, and print a summary of the posterior distribution for each parameter. 
+
+```{r, message = FALSE}
+# your code here
+```
+
+
+# Precision and sample size
+
+Plot the width of the credible intervals for the county level parameters vs. sample size for each county to evaluate how precision of the estimate relates to sample size. 
+
+```{r}
+# your code here
+```
+
+
+# Making predictions
+
+Unlike non-hierarchical approaches, hierarchical modeling allows you to make predictions for observed and unobserved groups. 
+
+### Observed groups 
+
+Suppose that we are going to sample the basement of a new house in county 70. 
+Simulate from the posterior predictive distribution for the radon measurements.
+Your answer should be in the form of a histogram of simulated observations.
+
+```{r}
+# your code here
+```
+
+### New groups
+
+Suppose that we are going to sample the basement of a new house in a new county with mean log uranium level `log_u` = 0.2. 
+This county is new, meaning that is not represented in the data. 
+What is the posterior predictive distribution for the radon measurements? 
+Your answer should be in the form of a histogram of simulated observations.
+
+```{r}
+# your code here
+```
+
+Which predictions were more precise: the predictions for the observed county or the unobserved county, and why?
+
+```{r}
+# your code here
+```
+
+*Your text here*
