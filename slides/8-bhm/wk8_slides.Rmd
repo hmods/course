@@ -1,0 +1,552 @@
+---
+title: "Hierarchical model construction"
+fontsize: 7pt
+output:
+  beamer_presentation:
+    colortheme: "spruce"
+    fonttheme: "structurebold"
+    latex_engine: xelatex
+header-includes: 
+- \usepackage{listings}
+- \lstset{basicstyle=\small}
+- \setmonofont[Scale=MatchLowercase]{Courier}
+- \setmonofont[Scale=0.8]{Courier}
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+par(bty='n')
+```
+
+# 
+
+1. Classic hierarchical Bayesian models
+2. Gaussian process models
+3. Projects
+
+# Occupancy models
+
+$$z_i \sim Bernoulli(\psi_i)$$
+
+$$y_{ij} \sim Bernoulli(z_i p)$$
+
+Sites $i, ..., N$
+
+Repeat visits $j, ..., J$
+
+# N-mixture models
+
+$$N_i \sim Poisson(\lambda_i)$$
+
+$$y_{ij} \sim Binomial(N_i, p)$$
+
+# Error in variables models
+
+$$y_i \sim Normal(\alpha + \beta \tilde{x}_i, \sigma_y)$$
+
+$$x_i \sim Normal(\tilde{x}_i, \sigma_x)$$
+
+# Example: modeling poop at ponds
+
+$$y_i \sim Poisson(\mu_i)$$
+
+$$\mu_i = \alpha_0 + log(\tilde{\pi})$$
+
+$$\pi \sim N(\tilde{\pi}, \sigma_\pi)$$
+
+# Zero inflated Poisson
+
+$$p(y_i|\theta,\lambda)
+= 
+\begin{cases}
+\theta + (1 - \theta) Poisson(0 \mid \lambda) & \mbox{if } y = 0 \\
+(1 - \theta) Poisson(y_i \mid \lambda) & \mbox{if } y > 0
+\end{cases}$$
+
+$\theta$: mixing parameter 
+
+# Zero inflated gamma
+
+$$p(y_i|\theta,\lambda)
+= 
+\begin{cases}
+\theta & \mbox{if } y = 0 \\
+(1 - \theta) Gamma(y_i \mid \alpha, \beta) & \mbox{if } y > 0
+\end{cases}$$
+
+$\theta$: mixing parameter 
+
+# Beta glm
+
+$$y_i \sim Beta(\alpha, \beta)$$
+
+$$\alpha = \mu \phi$$
+
+$$\beta = (1 - \mu) \phi$$
+
+$$logit(\mu) = X \beta$$
+
+# Hierarchical Bayesian structural equation models
+
+![](fig2.pdf)
+
+# Background: univariate normal
+
+$$x \sim N(\mu, \sigma^2)$$
+
+```{r, echo=FALSE, fig.height=4, fig.width=5}
+x <- seq(-3, 3, .1)
+plot(x, dnorm(x), type='l', main='Normal(0, 1) probability density')
+```
+
+# Background: multivariate normal
+
+$$\boldsymbol{x} \sim N(\boldsymbol{\mu}, \boldsymbol{\Sigma})$$
+
+$\boldsymbol{\mu}$: vector of means
+
+$\boldsymbol{\Sigma}$: covariance matrix
+
+# Bivariate normal probability density
+
+$$\boldsymbol{x} \sim N(\boldsymbol{\mu}, \boldsymbol{\Sigma})$$
+
+```{r, fig.width=8, fig.height=4}
+# lets first simulate a bivariate normal sample
+library(MASS)
+bivn <- mvrnorm(100000, mu = c(0, 0), Sigma = matrix(c(1, .5, .5, 1), 2))
+
+# now we do a kernel density estimate
+bivn.kde <- kde2d(bivn[,1], bivn[,2], n = 50)
+
+par(mfrow=c(1, 2))
+# now plot your results
+persp(bivn.kde, phi = 45, theta = 30, xlab='x1', ylab='x2', zlab='p(x1, x2)')
+
+# fancy contour with image
+image(bivn.kde, xlab='x1', ylab='x2'); contour(bivn.kde, add = T)
+```
+
+# Bivariate normal parameters
+
+$\boldsymbol{\mu} = \begin{bmatrix}
+\mu_1 \\
+\mu_2
+\end{bmatrix},$
+$\boldsymbol{\Sigma} = \begin{bmatrix}
+Cov[X_1, X_1] & Cov[X_1, X_2] \\
+Cov[X_2, X_1] & Cov[X_2, X_2]
+\end{bmatrix}$
+
+```{r, fig.width=6, fig.height=6}
+Sigma <- matrix(c(1, .5, .5, 1), nrow=2)
+n <- 10000
+z <- matrix(rnorm(n), nrow=nrow(Sigma))
+y <- t(chol(Sigma)) %*% z
+plot(y[1, ], y[2, ], xlab=expression(x[1]), ylab=expression(x[2]))
+text(0, 0, labels=expression(bold(mu)), col='red', cex=2)
+```
+
+# Bivariate normal parameters
+
+$\boldsymbol{\mu} = \begin{bmatrix}
+0 \\
+0
+\end{bmatrix},$
+$\boldsymbol{\Sigma} = \begin{bmatrix}
+1 & 0.5 \\
+0.5 & 1
+\end{bmatrix}$
+
+```{r, fig.width=6, fig.height=6}
+plot(y[1, ], y[2, ], xlab=expression(x[1]), ylab=expression(x[2]))
+text(0, 0, labels=expression(bold(mu)), col='red', cex=2)
+```
+
+# Uncorrelated bivariate normal
+
+$\boldsymbol{\mu} = \begin{bmatrix}
+0 \\
+0
+\end{bmatrix},$
+$\boldsymbol{\Sigma} = \begin{bmatrix}
+1 & 0 \\
+0 & 1
+\end{bmatrix}$
+
+```{r, fig.width=6, fig.height=6}
+Sigma <- matrix(c(1, 0, 0, 1), nrow=2)
+y <- t(chol(Sigma)) %*% z
+plot(y[1, ], y[2, ], xlab=expression(x[1]), ylab=expression(x[2]))
+text(0, 0, labels=expression(bold(mu)), col='red', cex=2)
+```
+
+# Common notation
+
+$\boldsymbol{\mu} = \begin{bmatrix}
+\mu_1 \\
+\mu_2
+\end{bmatrix},$
+$\boldsymbol{\Sigma} = \begin{bmatrix}
+\sigma_1^2 & \rho \sigma_1 \sigma_2 \\
+\rho \sigma_1 \sigma_2 & \sigma_2^2
+\end{bmatrix}$
+
+# Common notation
+
+$\boldsymbol{\mu} = \begin{bmatrix}
+\mu_1 \\
+\mu_2
+\end{bmatrix},$
+$\boldsymbol{\Sigma} = \begin{bmatrix}
+\sigma_1^2 & \rho \sigma_1 \sigma_2 \\
+\rho \sigma_1 \sigma_2 & \sigma_2^2
+\end{bmatrix}$
+
+$Cov[X_1, X_1] = Var[X_1] = \sigma_1^2$
+
+$Cov[X_1, X_2] = \rho \sigma_1 \sigma_2$
+
+$\Sigma$ must be symmetric and positive semi-definite
+
+# Classic linear modeling
+
+$$y = X\beta + \epsilon$$
+
+$$\epsilon \sim N(0, \sigma^2)$$
+
+Functional form determined by $X \beta$
+
+# Linear model functional forms
+
+e.g. $y = \mu(x) + \epsilon$
+
+```{r}
+n <- 20
+x <- rnorm(n)
+beta <- c(1, 1, -.5)
+X <- matrix(c(rep(1, n), x, x^3), ncol=3)
+y <- c(scale(X %*% beta + rnorm(n)))
+plot(x, y, ylim=range(y) * 2)
+m1 <- lm(y ~ x)
+m2 <- lm(y ~ x + I(x^2))
+abline(m1)
+newx <- seq(min(x), max(x), .01)
+p1 <- predict(m1, data.frame(x=newx), interval='prediction')
+p2 <- predict(m2, data.frame(x=newx), interval='prediction')
+matlines(newx, p1, lty=c(1, 2, 2), col=1)
+matlines(newx, p2, lty=c(1, 2, 2), col=2)
+```
+
+# Why not set a prior on $\mu(x)$?
+
+*Gaussian process* as a prior for $\mu(x)$
+
+$$y \sim N(\mu(x), \sigma^2)$$
+
+$$\mu(x) \sim GP(m, k)$$
+
+# GP prior for $\mu(x)$
+
+$y \sim N(\mu(x), \sigma^2)$
+
+$\mu(x) \sim GP(m, k)$
+
+```{r, fig.width=6, fig.height=4}
+library(scales)
+plot(x, y, ylim=range(y) * 2, pch=19)
+D <- as.matrix(dist(x))
+C <- function(sigma, d, rho){
+  stopifnot(sigma > 0)
+  stopifnot(rho > 0)
+  sigma ^ 2 * exp(-d^2 / (2 * rho ^ 2))
+}
+sigma_e <- .00001
+n_p <- 1000
+x_p <- sort(runif(n_p, min(x), max(x)))
+d_mat <- as.matrix(dist(x_p))
+Emat <- diag(rep(sigma_e^2, n_p))
+# simulate realizations
+for (i in 1:100){
+  sigma <- runif(1, 0, 5)
+  rho <- runif(1, 0, 4)
+  Cmat <- C(sigma, d_mat, rho)
+  L_c <- t(chol(Cmat + Emat))
+  z <- rnorm(n_p)
+  y_p <- L_c %*% z
+  lines(x_p, y_p + mean(y), col=alpha(1, .1))
+}
+title('Data and realizations from a GP prior')
+```
+
+# Wait, what's Gaussian about that?
+
+If $\mu(x) \sim GP(m, k)$, then 
+
+$\mu(x_1), ..., \mu(x_n) \sim N(m(x_1), ..., m(x_n), K(x_1, ..., x_n)$
+
+$m$ and $k$ are functions!
+
+# Mean function: m
+
+Classic example: $m(x) = X \beta$
+
+e.g., $\mu(x) \sim GP(X \beta, k(x))$
+
+But, the covariance function $k(x)$ is the real star.
+
+# Covariance functions
+
+$k$ specifies covariance between to $x$ values
+
+Squared exponential covariance:
+
+$$k(x, x') = \tau^2 exp\Big(-\dfrac{|x - x'|^2}{\phi}\Big)$$
+
+Lots of [options](http://www.gaussianprocess.org/gpml/chapters/RW4.pdf): smooth, jaggety, periodic
+
+# Example of squared exponential
+
+$$ \boldsymbol{K} = \begin{bmatrix}
+\tau^2 exp(-\frac{|x_1 - x_1|^2}{\phi}) & \tau^2 exp(-\frac{|x_1 - x_2|^2}{\phi}) \\
+\tau^2 exp(-\frac{|x_2 - x_1|^2}{\phi}) & \tau^2 exp(-\frac{|x_2 - x_2|^2}{\phi})
+\end{bmatrix}$$
+
+# Example of squared exponential
+
+$$ \boldsymbol{K} = \begin{bmatrix}
+\tau^2 exp(-\frac{0^2}{\phi}) & \tau^2 exp(-\frac{|x_1 - x_2|^2}{\phi}) \\
+\tau^2 exp(-\frac{|x_2 - x_1|^2}{\phi}) & \tau^2 exp(-\frac{0^2}{\phi})
+\end{bmatrix}$$
+
+# Example of squared exponential
+
+$$ \boldsymbol{K} = \begin{bmatrix}
+\tau^2 exp(0) & \tau^2 exp(-\frac{|x_1 - x_2|^2}{\phi}) \\
+\tau^2 exp(-\frac{|x_2 - x_1|^2}{\phi}) & \tau^2 exp(0)
+\end{bmatrix}$$
+
+# Example of squared exponential
+
+$$ \boldsymbol{K} = \begin{bmatrix}
+\tau^2 & \tau^2 exp(-\frac{|x_1 - x_2|^2}{\phi}) \\
+\tau^2 exp(-\frac{|x_2 - x_1|^2}{\phi}) & \tau^2
+\end{bmatrix}$$
+
+$Cor(\mu(x_1), \mu(x_2)) = exp(-\frac{|x_1 - x_2|^2}{\phi})$.
+
+# Correlation function
+
+$Cor(\mu(x_1), \mu(x_2)) = exp(-\frac{|x_1 - x_2|^2}{\phi})$.
+
+```{r, echo = FALSE}
+d <- seq(0, 1, .01)
+sq_exp <- function(d, phi) {
+  exp(-d^2 / phi)
+}
+plot(d, sq_exp(d, .1), type='l', 
+     xlab='Distance between x1 & x2', 
+     ylab='Correlation: mu(x1) & mu(x2)', 
+     col = alpha(1, .1))
+
+for (i in 1:100){
+  lines(d, sq_exp(d, abs(rnorm(1, .1, .1))), 
+        col = alpha(1, .1))
+}
+```
+
+# Gaussian process realizations
+
+```{r}
+# Simulating Gaussian processes
+library(akima)
+library(scales)
+
+## Univariate inputs ---------------------------
+n <- 1000
+x <- sort(runif(n, -10, 10))
+
+# squared exponential --------------------------
+l <- 1  # range parameter
+dmat <- as.matrix(dist(x))
+C <- exp(-dmat^2 / (2 * l^2)) + diag(rep(1E-6, n))
+
+# z %*% L produces multivariate normal draws from MVN(0, Sigma),
+# where L %*% t(L) = Sigma. i.e., L is a cholesky decomposition of Sigma
+# and z ~ normal(0, 1)
+z <- rnorm(n)
+y <- z %*% chol(C)
+plot(x, y, type='l')
+```
+
+# Gaussian process realizations
+
+```{r}
+z <- rnorm(n)
+y <- z %*% chol(C)
+plot(x, y, type='l')
+```
+
+
+# Gaussian process realizations
+
+```{r}
+z <- rnorm(n)
+y <- z %*% chol(C)
+plot(x, y, type='l')
+```
+
+
+# Gaussian process realizations
+
+```{r}
+z <- rnorm(n)
+y <- z %*% chol(C)
+plot(x, y, type='l')
+```
+
+
+# Gaussian process realizations
+
+```{r}
+z <- rnorm(n)
+y <- z %*% chol(C)
+plot(x, y, type='l')
+```
+
+# Gaussian process with nonzero mean function
+
+$y \sim N(\mu, \sigma_y)$
+
+$\mu \sim GP(X \beta, k(x)$
+
+```{r}
+# or, built into a linear model
+alpha <- -1
+beta <- .5
+y <- alpha + beta * x + z %*% chol(C)
+plot(x, y, type='l')
+```
+
+# Ornstein–Uhlenbeck Gaussian process
+
+$k(x_1, x_2) = e^{\frac{d_{x_1, x_2}}{\phi}}$
+
+```{r}
+C <- exp(-dmat / l)
+z <- rnorm(n)
+y <- z %*% chol(C)
+plot(x, y, type='l')
+```
+
+# Periodic Gaussian process
+
+$k(x_1, x_2) = exp(\frac{2 \text{sin}^2 (d / 2)}{\phi})$
+
+```{r}
+C <- exp(- 2 * sin(dmat / 2) * sin(dmat / 2) / l) + diag(rep(.000001, n))
+z <- rnorm(n)
+y <- z %*% chol(C)
+plot(x, y, type='l')
+```
+
+# Combining Gaussian processes
+
+e.g., sums and products of covariance functions
+
+```{r}
+C <- exp(- 2 * sin(dmat / 2) * sin(dmat / 2) / l) + diag(rep(.000001, n))
+C2 <- exp(-dmat / l)
+z <- rnorm(n)
+y <- z %*% chol(2 * C  + .1 * C2)
+plot(x, y, type='l')
+title('Periodic OU Gaussian process')
+```
+
+# Combining Gaussian processes
+
+```{r}
+C <- exp(- 2 * sin(dmat / 2) * sin(dmat / 2) / l * 30) + diag(rep(.000001, n))
+C2 <- exp(- 2 * sin(dmat / 2) * sin(dmat / 2) / l) + diag(rep(.000001, n))
+z <- rnorm(n)
+y <- z %*% chol(.1 * C  + 2 * C2)
+plot(x, y, type='l')
+title('Doubly periodic Gaussian process')
+```
+
+# Multidimensional inputs
+
+```{r}
+## 2d gaussian process -------------------------------
+# squared exponential covariance function:
+C <- function(sigma, d, rho){
+  stopifnot(sigma > 0)
+  stopifnot(rho > 0)
+  sigma ^ 2 * exp(-d^2 / (2 * rho ^ 2))
+}
+
+sigma <- 1
+rho <- .7
+sigma_e <- .001
+n <- 2000
+x1 <- runif(n, 0, 10)
+x2 <- runif(n, 0, 10)
+d_mat <- as.matrix(dist(cbind(x1, x2)))
+Cmat <- C(sigma, d_mat, rho)
+Emat <- diag(rep(sigma_e^2, n))
+# simulate realizations
+L_c <- t(chol(Cmat + Emat))
+z <- rnorm(n)
+y <- L_c %*% z
+s <- interp(x1, x2, y, nx=300, ny=300)
+image(s, col=rainbow(100))
+title('Squared exponential 2d Gaussian process')
+```
+
+# Multidimensional inputs
+
+```{r}
+## 2d gaussian process -------------------------------
+# OU covariance function:
+C <- function(sigma, d, rho){
+  stopifnot(sigma > 0)
+  stopifnot(rho > 0)
+  sigma ^ 2 * exp(-d / (rho))
+}
+
+sigma <- 1
+rho <- .7
+sigma_e <- .001
+n <- 2000
+x1 <- runif(n, 0, 10)
+x2 <- runif(n, 0, 10)
+d_mat <- as.matrix(dist(cbind(x1, x2)))
+Cmat <- C(sigma, d_mat, rho)
+Emat <- diag(rep(sigma_e^2, n))
+# simulate realizations
+L_c <- t(chol(Cmat + Emat))
+z <- rnorm(n)
+y <- L_c %*% z
+s <- interp(x1, x2, y, nx=300, ny=300)
+image(s, col=rainbow(100))
+title('OU 2d Gaussian process')
+```
+
+# Other inputs
+
+Generally, $k(x)$ maps **distance** to **correlation**
+
+- phylogenetic distance $\rightarrow$ phylogenetic correlation
+- pedigree distance $\rightarrow$ additive genetic correlation
+- distance in time $\rightarrow$ temporal correlation
+
+
+# Student projects
+
+Before fitting your model to your data: 
+
+1. Write out model in mathematical notation (ideally \LaTeX)
+2. Prior predictive simulations (do your priors make sense?)
+3. Model verification (given known parameters from PPS, do you recover parameters?)
+
